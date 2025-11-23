@@ -13,6 +13,8 @@ from .routers import shop, mural
 from .config import settings
 import os
 import qrcode
+import io
+import csv
 from io import BytesIO
 import base64
 from fastapi.staticfiles import StaticFiles
