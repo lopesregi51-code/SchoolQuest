@@ -651,6 +651,28 @@ def recusar_missao(
     db.commit()
     return {"message": "Missão recusada"}
 
+@app.delete("/users/all")
+def delete_all_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Delete all students in the gestor's school (gestor only)."""
+    if current_user.papel != 'gestor':
+        raise HTTPException(status_code=403, detail="Apenas gestores podem deletar todos os alunos")
+    
+    if not current_user.escola_id:
+        raise HTTPException(status_code=400, detail="Gestor não está vinculado a uma escola")
+    
+    # Delete only students from the same school
+    deleted_count = db.query(models.User).filter(
+        models.User.papel == 'aluno',
+        models.User.escola_id == current_user.escola_id
+    ).delete()
+    
+    db.commit()
+    return {"deleted": deleted_count, "message": f"{deleted_count} alunos deletados com sucesso"}
+
+
 @app.get("/missoes/professor/atribuidas", response_model=List[schemas.MissaoAtribuidaResponse])
 def get_professor_atribuidas(
     db: Session = Depends(get_db),
