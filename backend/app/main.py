@@ -558,7 +558,7 @@ def read_missoes_submetidas(db: Session = Depends(get_db), current_user: models.
         resultado.append({
             "id": sub.id,
             "aluno_nome": sub.aluno.nome,
-            "aluno_serie": sub.aluno.serie,
+            "aluno_serie": sub.aluno.serie_nome,
             "missao_titulo": sub.missao.titulo,
             "data_solicitacao": sub.data_solicitacao
         })
