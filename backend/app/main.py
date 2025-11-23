@@ -50,6 +50,35 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Create default users on startup."""
+    db = database.SessionLocal()
+    try:
+        # Check for admin user
+        admin = db.query(models.User).filter(models.User.email == "admin@test.com").first()
+        if not admin:
+            logger.info("Creating default admin user...")
+            admin_user = models.User(
+                email="admin@test.com",
+                nome="Administrador",
+                senha_hash=auth.get_password_hash("admin123"),
+                papel="admin",
+                pontos=1000,
+                xp=1000,
+                nivel=10
+            )
+            db.add(admin_user)
+            db.commit()
+            logger.info("Default admin user created: admin@test.com / admin123")
+        else:
+            logger.info("Admin user already exists.")
+    except Exception as e:
+        logger.error(f"Error creating default users: {e}")
+    finally:
+        db.close()
+
+
 # Global Exception Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
