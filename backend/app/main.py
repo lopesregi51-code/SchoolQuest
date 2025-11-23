@@ -603,6 +603,79 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
     return {"message": "Missão validada com sucesso!"}
 
 @app.post("/users/import")
+async def import_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.papel != 'gestor':
+        raise HTTPException(status_code=403, detail="Apenas gestores podem importar usuários")
+    
+    content = await file.read()
+    # Use utf-8-sig to handle BOM from Excel
+    try:
+        decoded_content = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        try:
+            decoded_content = content.decode('latin-1')
+        except:
+            raise HTTPException(status_code=400, detail="Erro de codificação do arquivo. Use UTF-8.")
+
+    csv_reader = csv.DictReader(io.StringIO(decoded_content))
+    
+    # Validate headers
+    if not csv_reader.fieldnames or 'email' not in csv_reader.fieldnames or 'nome' not in csv_reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV inválido. Colunas obrigatórias: nome, email")
+
+    count = 0
+    errors = []
+    row_num = 1
+    
+    for row in csv_reader:
+        row_num += 1
+        email = row.get('email', '').strip()
+        if not email:
+            continue
+            
+        try:
+            # Check if user exists
+            if db.query(models.User).filter(models.User.email == email).first():
+                errors.append(f"Linha {row_num}: Email {email} já cadastrado")
+                continue
+
+            # Resolve serie_id if provided
+            serie_id = None
+            serie_nome = row.get('serie')
+            if serie_nome:
+                serie = db.query(models.Serie).filter(
+                    models.Serie.nome == serie_nome,
+                    models.Serie.escola_id == current_user.escola_id
+                ).first()
+                if serie:
+                    serie_id = serie.id
+            
+            db_user = models.User(
+                email=email,
+                nome=row.get('nome', '').strip(),
+                senha_hash=auth.get_password_hash(row.get('senha', 'senha123')),
+                papel=row.get('papel', 'aluno').lower(),
+                serie_id=serie_id,
+                disciplina=row.get('disciplina'),
+                escola_id=current_user.escola_id
+            )
+            db.add(db_user)
+            count += 1
+        except Exception as e:
+            errors.append(f"Linha {row_num} ({email}): {str(e)}")
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Transaction error during import: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao salvar dados no banco")
+
+    logger.info(f"Users imported: {count} successful, {len(errors)} errors")
+    return {"imported": count, "errors": errors}
+
+@app.delete("/users/all")
+def delete_all_users(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.papel != 'gestor':
         raise HTTPException(status_code=403, detail="Apenas gestores podem deletar usuários")
     
