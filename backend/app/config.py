@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "dev-secret-key-CHANGE-IN-PRODUCTION"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 43200  # 30 days
     
     # Database
     database_url: str = "sqlite:///./schoolquest.db"

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { Trophy, Medal, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface User {
+    id: number;
     nome: string;
     xp: number;
     nivel: number;
@@ -82,7 +84,9 @@ export const Ranking: React.FC = () => {
                                 </div>
 
                                 <div className="flex-1">
-                                    <h3 className="font-bold text-white">{user.nome}</h3>
+                                    <Link to={`/profile/${user.id}`} className="font-bold text-white hover:text-blue-400 hover:underline">
+                                        {user.nome}
+                                    </Link>
                                     <p className="text-xs text-gray-400">Nível {user.nivel} • {user.serie}</p>
                                 </div>
 
@@ -127,7 +131,9 @@ export const Ranking: React.FC = () => {
                                         <tr key={index} className="hover:bg-gray-700/30">
                                             <td className="py-3 pl-4 font-bold text-gray-400">#{index + 1}</td>
                                             <td className="py-3">
-                                                <div className="font-bold">{user.nome}</div>
+                                                <Link to={`/profile/${user.id}`} className="font-bold hover:text-blue-400 hover:underline">
+                                                    {user.nome}
+                                                </Link>
                                                 <div className="text-xs text-gray-500">{user.serie} • Nível {user.nivel}</div>
                                             </td>
                                             <td className="py-3 text-right pr-4 font-bold text-yellow-400">{user.xp}</td>

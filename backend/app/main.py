@@ -420,6 +420,69 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
     users = query.offset(skip).limit(limit).all()
     return users
 
+@app.get("/users/{user_id}/profile")
+def get_user_profile(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Get full profile for a specific user."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        
+    # Basic info
+    profile_data = {
+        "id": user.id,
+        "nome": user.nome,
+        "email": user.email,
+        "papel": user.papel,
+        "serie": user.serie_nome,
+        "nivel": user.nivel,
+        "xp": user.xp,
+        "moedas": user.moedas,
+        "bio": user.bio,
+        "interesses": user.interesses,
+        "avatar_url": user.avatar_url,
+        "escola_nome": user.escola.nome if user.escola else None,
+        "joined_at": user.criado_em
+    }
+    
+    # Clan info
+    clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == user.id).first()
+    if clan_member:
+        profile_data["clan"] = {
+            "id": clan_member.clan.id,
+            "nome": clan_member.clan.nome,
+            "papel": clan_member.papel
+        }
+    else:
+        profile_data["clan"] = None
+        
+    # Completed Missions (Last 5)
+    completed_missions = db.query(models.MissaoConcluida).filter(
+        models.MissaoConcluida.aluno_id == user.id,
+        models.MissaoConcluida.validada == True
+    ).order_by(models.MissaoConcluida.data_validacao.desc()).limit(5).all()
+    
+    profile_data["missoes_concluidas"] = [
+        {
+            "titulo": cm.missao.titulo,
+            "pontos": cm.missao.pontos,
+            "data": cm.data_validacao
+        } for cm in completed_missions
+    ]
+    
+    # Mural Posts (Last 5)
+    mural_posts = db.query(models.MuralPost).filter(models.MuralPost.user_id == user.id).order_by(models.MuralPost.criado_em.desc()).limit(5).all()
+    
+    profile_data["posts"] = [
+        {
+            "id": post.id,
+            "conteudo": post.conteudo,
+            "likes": post.likes,
+            "data": post.data_criacao
+        } for post in mural_posts
+    ]
+    
+    return profile_data
+
 @app.put("/users/{user_id}", response_model=schemas.UserResponse)
 def update_user(user_id: int, user_update: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Update user information."""
@@ -483,6 +546,152 @@ def create_missao(missao: schemas.MissaoCreate, db: Session = Depends(get_db), c
     db.refresh(db_missao)
     logger.info(f"Mission created: {missao.titulo} by {current_user.nome}")
     return db_missao
+
+@app.delete("/missoes/{missao_id}")
+def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Deletar uma missão (apenas o criador ou gestor)."""
+    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
+    if not missao:
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+    
+    if current_user.papel != 'admin' and current_user.papel != 'gestor' and missao.criador_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir esta missão")
+        
+    db.delete(missao)
+    db.commit()
+    return {"message": "Missão excluída com sucesso"}
+
+@app.post("/missoes/atribuir", response_model=schemas.MissaoAtribuidaResponse)
+def atribuir_missao(
+    atribuicao: schemas.MissaoAtribuidaCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.papel not in ['professor', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem atribuir missões")
+    
+    missao = db.query(models.Missao).filter(models.Missao.id == atribuicao.missao_id).first()
+    if not missao:
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+    
+    if missao.criador_id != current_user.id and current_user.papel != 'gestor':
+        raise HTTPException(status_code=403, detail="Você só pode atribuir suas próprias missões")
+
+    # Check if already assigned
+    existing = db.query(models.MissaoAtribuida).filter(
+        models.MissaoAtribuida.missao_id == atribuicao.missao_id,
+        models.MissaoAtribuida.aluno_id == atribuicao.aluno_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Missão já atribuída a este aluno")
+
+    db_atribuicao = models.MissaoAtribuida(
+        missao_id=atribuicao.missao_id,
+        aluno_id=atribuicao.aluno_id,
+        status="pendente"
+    )
+    db.add(db_atribuicao)
+    db.commit()
+    db.refresh(db_atribuicao)
+    
+    # Manually populate for response
+    db_atribuicao.aluno_nome = db_atribuicao.aluno.nome
+    
+    return db_atribuicao
+
+@app.get("/missoes/recebidas", response_model=List[schemas.MissaoAtribuidaResponse])
+def get_missoes_recebidas(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    missoes = db.query(models.MissaoAtribuida).filter(
+        models.MissaoAtribuida.aluno_id == current_user.id,
+        models.MissaoAtribuida.status == "pendente"
+    ).all()
+    
+    for m in missoes:
+        m.aluno_nome = current_user.nome
+        
+    return missoes
+
+@app.post("/missoes/atribuidas/{id}/aceitar")
+def aceitar_missao(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    atribuicao = db.query(models.MissaoAtribuida).filter(models.MissaoAtribuida.id == id).first()
+    if not atribuicao:
+        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
+    
+    if atribuicao.aluno_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Não autorizado")
+        
+    atribuicao.status = "aceita"
+    atribuicao.data_resposta = datetime.utcnow()
+    db.commit()
+    return {"message": "Missão aceita"}
+
+@app.post("/missoes/atribuidas/{id}/recusar")
+def recusar_missao(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    atribuicao = db.query(models.MissaoAtribuida).filter(models.MissaoAtribuida.id == id).first()
+    if not atribuicao:
+        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
+    
+    if atribuicao.aluno_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Não autorizado")
+        
+    atribuicao.status = "recusada"
+    atribuicao.data_resposta = datetime.utcnow()
+    db.commit()
+    return {"message": "Missão recusada"}
+
+@app.get("/missoes/professor/atribuidas", response_model=List[schemas.MissaoAtribuidaResponse])
+def get_professor_atribuidas(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.papel not in ['professor', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem ver atribuições")
+
+    results = db.query(models.MissaoAtribuida).join(models.Missao).filter(
+        models.Missao.criador_id == current_user.id
+    ).all()
+    
+    for res in results:
+        res.aluno_nome = res.aluno.nome if res.aluno else "Desconhecido"
+        
+    return results
+
+@app.get("/missoes/professor/concluidas")
+def get_professor_concluidas(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.papel not in ['professor', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem ver missões concluídas")
+
+    conclusoes = db.query(models.MissaoConcluida).join(models.Missao).filter(
+        models.Missao.criador_id == current_user.id,
+        models.MissaoConcluida.validada == True
+    ).all()
+    
+    resultado = []
+    for sub in conclusoes:
+        resultado.append({
+            "id": sub.id,
+            "aluno_nome": sub.aluno.nome,
+            "aluno_serie": sub.aluno.serie_nome,
+            "missao_titulo": sub.missao.titulo,
+            "data_solicitacao": sub.data_solicitacao,
+            "data_validacao": sub.data_validacao
+        })
+    return resultado
 
 @app.get("/missoes/", response_model=list[schemas.MissaoResponse])
 def read_missoes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -1107,6 +1316,32 @@ def like_mural_post(post_id: int, db: Session = Depends(get_db), current_user: m
     db.commit()
     
     return {"message": "Post curtido", "likes": post.likes}
+
+@app.delete("/mural/{post_id}")
+def delete_mural_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    post = db.query(models.MuralPost).filter(models.MuralPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post não encontrado")
+    
+    if current_user.papel != 'admin' and current_user.papel != 'gestor' and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+        
+    db.delete(post)
+    db.commit()
+    return {"message": "Post excluído"}
+
+@app.delete("/clans/{clan_id}")
+def delete_clan(clan_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    clan = db.query(models.Clan).filter(models.Clan.id == clan_id).first()
+    if not clan:
+        raise HTTPException(status_code=404, detail="Clã não encontrado")
+        
+    if current_user.papel != 'admin' and current_user.papel != 'gestor' and clan.lider_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+        
+    db.delete(clan)
+    db.commit()
+    return {"message": "Clã excluído"}
 
 # --- New Features (Phase 4) ---
 

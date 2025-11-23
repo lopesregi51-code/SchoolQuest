@@ -74,8 +74,27 @@ class MissaoCreate(MissaoBase):
 
 class MissaoResponse(MissaoBase):
     id: int
+    criador_id: int
     status: Optional[str] = "disponivel"
     criado_em: datetime
+    
+    class Config:
+        orm_mode = True
+
+class MissaoAtribuidaBase(BaseModel):
+    missao_id: int
+    aluno_id: int
+
+class MissaoAtribuidaCreate(MissaoAtribuidaBase):
+    pass
+
+class MissaoAtribuidaResponse(MissaoAtribuidaBase):
+    id: int
+    status: str
+    data_atribuicao: datetime
+    data_resposta: Optional[datetime] = None
+    missao: Optional[MissaoResponse] = None
+    aluno_nome: Optional[str] = None
     
     class Config:
         orm_mode = True

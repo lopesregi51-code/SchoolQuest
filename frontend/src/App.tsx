@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { StudentDashboard } from './pages/StudentDashboard';
-import { StudentProfile } from './pages/StudentProfile';
+import { UserProfile } from './pages/UserProfile';
 import { ClanPage } from './pages/ClanPage';
 import { ProfessorPanel } from './pages/ProfessorPanel';
 import { ManagerPanel } from './pages/ManagerPanel';
@@ -123,7 +123,15 @@ function App() {
             path="/profile"
             element={
               <ProtectedRoute>
-                <StudentProfile />
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute>
+                <UserProfile />
               </ProtectedRoute>
             }
           />

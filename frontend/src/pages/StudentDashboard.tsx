@@ -23,9 +23,43 @@ export const StudentDashboard: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'disponivel' | 'pendente' | 'aprovada'>('disponivel');
 
+    const [receivedMissions, setReceivedMissions] = useState<any[]>([]);
+
     useEffect(() => {
         fetchMissions();
+        fetchReceivedMissions();
     }, []);
+
+    const fetchReceivedMissions = async () => {
+        try {
+            const response = await apiClient.get('/missoes/recebidas');
+            setReceivedMissions(response.data);
+        } catch (error) {
+            console.error('Failed to fetch received missions:', error);
+        }
+    };
+
+    const handleAcceptMission = async (id: number) => {
+        try {
+            await apiClient.post(`/missoes/atribuidas/${id}/aceitar`);
+            alert('Missão aceita! Ela agora está disponível para realização.');
+            fetchReceivedMissions();
+            fetchMissions();
+        } catch (error) {
+            alert('Erro ao aceitar missão');
+        }
+    };
+
+    const handleRejectMission = async (id: number) => {
+        if (!confirm('Tem certeza que deseja recusar esta missão?')) return;
+        try {
+            await apiClient.post(`/missoes/atribuidas/${id}/recusar`);
+            alert('Missão recusada.');
+            fetchReceivedMissions();
+        } catch (error) {
+            alert('Erro ao recusar missão');
+        }
+    };
 
     const fetchMissions = async () => {
         try {
@@ -123,6 +157,43 @@ export const StudentDashboard: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Inbox / Received Missions */}
+                    {receivedMissions.length > 0 && (
+                        <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 mb-8">
+                            <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                </span>
+                                Missões Recebidas
+                            </h2>
+                            <div className="grid gap-4">
+                                {receivedMissions.map((mission) => (
+                                    <div key={mission.id} className="bg-gray-700/50 p-4 rounded-xl border border-purple-500/30 flex justify-between items-center">
+                                        <div>
+                                            <h3 className="font-bold text-lg">{mission.missao?.titulo}</h3>
+                                            <p className="text-sm text-gray-300">Atribuída por Professor</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAcceptMission(mission.id)}
+                                                className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold text-sm"
+                                            >
+                                                Aceitar
+                                            </button>
+                                            <button
+                                                onClick={() => handleRejectMission(mission.id)}
+                                                className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-sm"
+                                            >
+                                                Recusar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Missions Section */}
                     <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">

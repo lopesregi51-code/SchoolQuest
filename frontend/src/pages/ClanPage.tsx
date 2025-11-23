@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Users, UserPlus, LogOut, Mail, Check } from 'lucide-react';
+import { Shield, Users, UserPlus, LogOut, Mail, Check, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface Clan {
     id: number;
@@ -139,6 +140,20 @@ export const ClanPage: React.FC = () => {
         }
     };
 
+    const handleDeleteClan = async () => {
+        if (!clan) return;
+        if (!confirm(`Tem certeza que deseja excluir o clã "${clan.nome}"? Esta ação não pode ser desfeita.`)) return;
+
+        try {
+            await apiClient.delete(`/clans/${clan.id}`);
+            alert('Clã excluído com sucesso.');
+            setClan(null);
+            fetchClanData();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao excluir clã');
+        }
+    };
+
     if (loading) return <div className="p-8 text-white">Carregando...</div>;
 
     return (
@@ -248,6 +263,14 @@ export const ClanPage: React.FC = () => {
                                 >
                                     <LogOut className="w-4 h-4" /> Sair do Clã
                                 </button>
+                                {(user?.papel === 'admin' || user?.papel === 'gestor') && (
+                                    <button
+                                        onClick={handleDeleteClan}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" /> Excluir Clã
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -269,8 +292,10 @@ export const ClanPage: React.FC = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="font-bold">{member.user_nome}</p>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${member.papel === 'lider' ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-600 text-gray-300'
+                                                <Link to={`/profile/${member.user_id}`} className="font-bold hover:text-blue-400 hover:underline">
+                                                    {member.user_nome}
+                                                </Link>
+                                                <span className={`block w-fit text-xs px-2 py-0.5 rounded-full mt-1 ${member.papel === 'lider' ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-600 text-gray-300'
                                                     }`}>
                                                     {member.papel.toUpperCase()}
                                                 </span>

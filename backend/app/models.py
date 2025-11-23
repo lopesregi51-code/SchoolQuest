@@ -97,6 +97,19 @@ class MissaoConcluida(Base):
     missao = relationship("Missao")
     aluno = relationship("User", foreign_keys=[aluno_id])
 
+class MissaoAtribuida(Base):
+    __tablename__ = "missoes_atribuidas"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    missao_id = Column(Integer, ForeignKey("missoes.id"))
+    aluno_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(String, default="pendente") # pendente, aceita, recusada
+    data_atribuicao = Column(DateTime, default=datetime.utcnow)
+    data_resposta = Column(DateTime, nullable=True)
+    
+    missao = relationship("Missao")
+    aluno = relationship("User", foreign_keys=[aluno_id])
+
 class Item(Base):
     __tablename__ = "itens"
     

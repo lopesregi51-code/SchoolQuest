@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Plus, LogOut, CheckCircle, XCircle, Clock, QrCode } from 'lucide-react';
+import { BookOpen, Plus, LogOut, CheckCircle, XCircle, Clock, QrCode, Trash2 } from 'lucide-react';
 import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -17,6 +17,9 @@ export const ProfessorPanel: React.FC = () => {
     const { user, logout } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
     const [pendingMissions, setPendingMissions] = useState<PendingMission[]>([]);
+    const [myMissions, setMyMissions] = useState<any[]>([]);
+    const [assignedMissions, setAssignedMissions] = useState<any[]>([]);
+    const [completedMissions, setCompletedMissions] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         titulo: '',
         descricao: '',
@@ -25,17 +28,6 @@ export const ProfessorPanel: React.FC = () => {
         categoria: 'diaria'
     });
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-
-    useEffect(() => {
-        fetchPendingMissions();
-
-        // Cleanup scanner on unmount
-        return () => {
-            if (html5QrCodeRef.current?.isScanning) {
-                html5QrCodeRef.current.stop().catch(console.error);
-            }
-        };
-    }, []);
 
     const fetchPendingMissions = async () => {
         try {
@@ -46,13 +38,84 @@ export const ProfessorPanel: React.FC = () => {
         }
     };
 
+    const fetchAssignedMissions = async () => {
+        try {
+            const response = await apiClient.get('/missoes/professor/atribuidas');
+            setAssignedMissions(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar missões atribuídas', error);
+        }
+    };
+
+    const fetchCompletedMissions = async () => {
+        try {
+            const response = await apiClient.get('/missoes/professor/concluidas');
+            setCompletedMissions(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar missões concluídas', error);
+        }
+    };
+
+    const handleAssignMission = async (missionId: number) => {
+        const email = prompt("Digite o email do aluno para atribuir esta missão:");
+        if (!email) return;
+
+        try {
+            // First find the user by email (we need an endpoint for this or search)
+            // For MVP, let's assume we have a search endpoint or we can try to find locally if we had the list.
+            // Since we don't have a direct 'get user by email' for professors easily exposed without search,
+            // let's use the search endpoint I noticed in main.py: /users/search?q=...
+
+            const searchRes = await apiClient.get(`/users/search?q=${email}`);
+            const students = searchRes.data;
+            const student = students.find((s: any) => s.email === email);
+
+            if (!student) {
+                alert('Aluno não encontrado com este email.');
+                return;
+            }
+
+            await apiClient.post('/missoes/atribuir', {
+                missao_id: missionId,
+                aluno_id: student.id
+            });
+            alert(`Missão atribuída para ${student.nome}!`);
+            fetchAssignedMissions();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao atribuir missão');
+        }
+    };
+
     const validateMission = async (id: number, aprovado: boolean) => {
         try {
             await apiClient.post(`/missoes/validar/${id}?aprovado=${aprovado}`);
             alert(aprovado ? 'Missão aprovada!' : 'Missão rejeitada!');
             fetchPendingMissions();
+            fetchCompletedMissions();
         } catch (error) {
             alert('Erro ao validar missão');
+        }
+    };
+
+    const fetchMyMissions = async () => {
+        try {
+            const response = await apiClient.get('/missoes/');
+            // Filter missions created by me
+            const my = response.data.filter((m: any) => m.criador_id === user?.id);
+            setMyMissions(my);
+        } catch (error) {
+            console.error('Erro ao buscar minhas missões', error);
+        }
+    };
+
+    const handleDeleteMission = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir esta missão?')) return;
+        try {
+            await apiClient.delete(`/missoes/${id}`);
+            alert('Missão excluída!');
+            fetchMyMissions();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao excluir missão');
         }
     };
 
@@ -69,6 +132,7 @@ export const ProfessorPanel: React.FC = () => {
                 categoria: 'diaria'
             });
             setIsCreating(false);
+            fetchMyMissions(); // Refresh list after creation
         } catch (error) {
             alert('Erro ao criar missão');
         }
@@ -128,6 +192,20 @@ export const ProfessorPanel: React.FC = () => {
             console.error('Error stopping QR scanner:', err);
         }
     };
+
+    useEffect(() => {
+        fetchPendingMissions();
+        fetchMyMissions();
+        fetchAssignedMissions();
+        fetchCompletedMissions();
+
+        // Cleanup scanner on unmount
+        return () => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().catch(console.error);
+            }
+        };
+    }, []);
 
     if (!user) return null;
 
@@ -261,6 +339,113 @@ export const ProfessorPanel: React.FC = () => {
                                     </button>
                                 </div>
                             </form>
+                        )}
+                    </div>
+
+                    {/* My Missions */}
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <BookOpen className="w-6 h-6 text-blue-400" />
+                                Minhas Missões Ativas
+                            </h2>
+                        </div>
+
+                        {myMissions.length === 0 ? (
+                            <p className="text-gray-400">Você ainda não criou nenhuma missão.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {myMissions.map((mission) => (
+                                    <div key={mission.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600 flex justify-between items-center">
+                                        <div>
+                                            <h3 className="font-bold text-lg">{mission.titulo}</h3>
+                                            <p className="text-sm text-gray-300">{mission.descricao}</p>
+                                            <div className="flex gap-2 mt-1 text-xs">
+                                                <span className="text-yellow-400">{mission.pontos} XP</span>
+                                                <span className="text-green-400">{mission.moedas} Moedas</span>
+                                                <span className="bg-blue-900 px-2 rounded text-blue-200">{mission.categoria}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAssignMission(mission.id)}
+                                                className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm transition-colors"
+                                                title="Atribuir a Aluno"
+                                            >
+                                                Atribuir
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteMission(mission.id)}
+                                                className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                                                title="Excluir Missão"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Assigned Missions (Pending) */}
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <Clock className="w-6 h-6 text-orange-400" />
+                                Atribuições Pendentes
+                            </h2>
+                        </div>
+                        {assignedMissions.length === 0 ? (
+                            <p className="text-gray-400">Nenhuma missão atribuída pendente.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {assignedMissions.map((assignment) => (
+                                    <div key={assignment.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h3 className="font-bold text-lg">{assignment.missao?.titulo || 'Missão'}</h3>
+                                                <p className="text-sm text-gray-300">Aluno: {assignment.aluno_nome}</p>
+                                                <p className="text-xs text-gray-400">
+                                                    Atribuído em: {new Date(assignment.data_atribuicao).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs font-bold uppercase">
+                                                {assignment.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Completed Missions */}
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <CheckCircle className="w-6 h-6 text-green-400" />
+                                Missões Concluídas
+                            </h2>
+                        </div>
+                        {completedMissions.length === 0 ? (
+                            <p className="text-gray-400">Nenhuma missão concluída ainda.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {completedMissions.map((completion) => (
+                                    <div key={completion.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                                        <div>
+                                            <h3 className="font-bold text-lg">{completion.missao_titulo}</h3>
+                                            <p className="text-sm text-gray-300">
+                                                Aluno: {completion.aluno_nome} ({completion.aluno_serie})
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                Concluída em: {new Date(completion.data_validacao).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
 

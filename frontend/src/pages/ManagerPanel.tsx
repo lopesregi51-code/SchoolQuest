@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image } from 'lucide-react';
+import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -39,7 +39,7 @@ interface Serie {
 }
 
 export const ManagerPanel: React.FC = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -311,6 +311,13 @@ export const ManagerPanel: React.FC = () => {
                         <p className="text-gray-400">Bem-vindo, {user?.nome}{user?.escola_nome ? ` • ${user.escola_nome}` : ''}</p>
                     </div>
                 </div>
+                <button
+                    onClick={logout}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Sair
+                </button>
             </header>
 
             {/* Actions Bar */}

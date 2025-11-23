@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
 import { Heart, Trash2, Image as ImageIcon, Send } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
+import { Link } from 'react-router-dom';
 
 interface Post {
     id: number;
@@ -177,7 +178,9 @@ export const MuralPage: React.FC = () => {
                                             {post.user_nome.charAt(0)}
                                         </div>
                                         <div>
-                                            <h3 className="text-sm font-bold leading-tight">{post.user_nome}</h3>
+                                            <Link to={`/profile/${post.user_id}`} className="text-sm font-bold leading-tight hover:text-blue-400 hover:underline">
+                                                {post.user_nome}
+                                            </Link>
                                             <p className="text-[10px] text-gray-500">{post.data_criacao}</p>
                                         </div>
                                     </div>
