@@ -69,7 +69,7 @@ export const ManagerPanel: React.FC = () => {
     // User Edit State
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [showEditUserModal, setShowEditUserModal] = useState(false);
-    const [editFormData, setEditFormData] = useState<Partial<User>>({});
+    const [editFormData, setEditFormData] = useState<Partial<User> & { senha?: string }>({});
 
     useEffect(() => {
         fetchUsers();

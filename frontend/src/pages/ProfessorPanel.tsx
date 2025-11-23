@@ -109,7 +109,7 @@ export const ProfessorPanel: React.FC = () => {
                         manualInput.classList.remove('hidden');
                     }
                 },
-                (errorMessage) => {
+                (_) => {
                     // Ignore scanning errors (they happen continuously)
                 }
             );
