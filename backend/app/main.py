@@ -603,53 +603,6 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
     return {"message": "Missão validada com sucesso!"}
 
 @app.post("/users/import")
-async def import_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    if current_user.papel != 'gestor':
-        raise HTTPException(status_code=403, detail="Apenas gestores podem importar usuários")
-    
-    content = await file.read()
-    decoded_content = content.decode('utf-8')
-    csv_reader = csv.DictReader(io.StringIO(decoded_content))
-    
-    count = 0
-    errors = []
-    for row in csv_reader:
-        try:
-            if db.query(models.User).filter(models.User.email == row['email']).first():
-                errors.append(f"Email {row['email']} já existe")
-                continue
-                
-            # Lookup serie_id if serie name provided
-            serie_nome = row.get('serie')
-            serie_id = None
-            if serie_nome:
-                serie_obj = db.query(models.Serie).filter(
-                    models.Serie.nome == serie_nome, 
-                    models.Serie.escola_id == current_user.escola_id
-                ).first()
-                if serie_obj:
-                    serie_id = serie_obj.id
-
-            db_user = models.User(
-                email=row['email'],
-                nome=row['nome'],
-                senha_hash=auth.get_password_hash(row.get('senha', 'senha123')),
-                papel=row.get('papel', 'aluno'),
-                serie_id=serie_id,
-                disciplina=row.get('disciplina'),
-                escola_id=current_user.escola_id
-            )
-            db.add(db_user)
-            count += 1
-        except Exception as e:
-            errors.append(f"Erro ao processar {row.get('email', 'unknown')}: {str(e)}")
-    
-    db.commit()
-    logger.info(f"Users imported: {count} successful, {len(errors)} errors")
-    return {"imported": count, "errors": errors}
-
-@app.delete("/users/all")
-def delete_all_users(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.papel != 'gestor':
         raise HTTPException(status_code=403, detail="Apenas gestores podem deletar usuários")
     

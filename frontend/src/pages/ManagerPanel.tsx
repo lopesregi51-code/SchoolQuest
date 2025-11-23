@@ -168,11 +168,14 @@ export const ManagerPanel: React.FC = () => {
         }
     };
 
+    const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+
     const handleUpload = async () => {
         if (!file) return;
 
         try {
             setUploadStatus('Enviando...');
+            setUploadErrors([]);
             const formData = new FormData();
             formData.append('file', file);
 
@@ -180,11 +183,22 @@ export const ManagerPanel: React.FC = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            setUploadStatus(`${response.data.imported} usuários importados com sucesso!`);
+            const { imported, errors } = response.data;
+
+            if (errors && errors.length > 0) {
+                setUploadStatus(`${imported} usuários importados. ${errors.length} erros encontrados:`);
+                setUploadErrors(errors);
+            } else {
+                setUploadStatus(`${imported} usuários importados com sucesso!`);
+            }
+
             fetchUsers();
             setFile(null);
-        } catch (error) {
+        } catch (error: any) {
             setUploadStatus('Erro ao importar usuários');
+            if (error.response?.data?.detail) {
+                setUploadErrors([error.response.data.detail]);
+            }
         }
     };
 
@@ -584,7 +598,20 @@ export const ManagerPanel: React.FC = () => {
                             Importar
                         </button>
                     </div>
-                    {uploadStatus && <p className="mt-2 text-sm text-green-400">{uploadStatus}</p>}
+                    {uploadStatus && (
+                        <div className={`mt-2 text-sm ${uploadErrors.length > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
+                            <p className="font-bold">{uploadStatus}</p>
+                            {uploadErrors.length > 0 && (
+                                <div className="mt-2 max-h-32 overflow-y-auto bg-black/30 p-2 rounded border border-yellow-500/30">
+                                    <ul className="list-disc list-inside space-y-1">
+                                        {uploadErrors.map((err, idx) => (
+                                            <li key={idx} className="text-xs text-red-300">{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Criar Usuário Manualmente */}
