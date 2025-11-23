@@ -35,7 +35,8 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
         // Logout automático em caso de 401
-        if (error.response?.status === 401) {
+        // Logout automático em caso de 401, exceto no login
+        if (error.response?.status === 401 && !error.config?.url?.includes('/auth/token')) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/';
