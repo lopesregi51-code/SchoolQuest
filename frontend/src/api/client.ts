@@ -13,7 +13,7 @@ const apiClient: AxiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000, // 10 seconds
+    timeout: 120000, // 120 seconds to handle Render cold starts
 });
 
 // Request interceptor - adiciona token automaticamente
