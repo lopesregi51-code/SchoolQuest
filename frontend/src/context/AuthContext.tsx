@@ -58,22 +58,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const login = async (email: string, password: string) => {
-        try {
-            const formData = new URLSearchParams();
-            formData.append('username', email);
-            formData.append('password', password);
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
 
-            const response = await apiClient.post('/auth/token', formData, {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            });
+        const response = await apiClient.post('/auth/token', formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
 
-            const { access_token } = response.data;
+        const { access_token } = response.data;
 
-            localStorage.setItem('token', access_token);
-            setToken(access_token);
-        } catch (error) {
-            throw new Error('Login failed. Please check your credentials.');
-        }
+        localStorage.setItem('token', access_token);
+        setToken(access_token);
     };
 
     const logout = () => {

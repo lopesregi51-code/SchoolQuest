@@ -24,13 +24,34 @@ export const Login: React.FC = () => {
             navigate('/dashboard');
         } catch (err: any) {
             console.error("Login error:", err);
-            if (err.response?.status === 401) {
-                setError('Email ou senha incorretos');
-            } else if (err.code === 'ECONNABORTED') {
-                setError('O servidor demorou muito para responder. Tente novamente.');
+
+            let errorMessage = 'Erro desconhecido';
+            let technicalDetails = '';
+
+            if (err.response) {
+                // O servidor respondeu com um status de erro
+                if (err.response.status === 401) {
+                    errorMessage = 'Email ou senha incorretos';
+                } else {
+                    errorMessage = `Erro no servidor: ${err.response.status}`;
+                }
+                technicalDetails = `Status: ${err.response.status}\nURL: ${err.config?.url}\nBaseURL: ${err.config?.baseURL}`;
+            } else if (err.request) {
+                // A requisição foi feita mas não houve resposta
+                errorMessage = 'Erro de conexão. O servidor não respondeu.';
+                technicalDetails = `Sem resposta do servidor.\nURL Tentada: ${err.config?.baseURL}${err.config?.url}\nErro: ${err.message}`;
             } else {
-                setError('Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+                // Algo aconteceu na configuração da requisição
+                errorMessage = 'Erro ao configurar a requisição.';
+                technicalDetails = `Erro: ${err.message}`;
             }
+
+            setError(errorMessage);
+            // Salvar detalhes técnicos no estado para exibir se necessário (opcional, aqui vou logar ou mostrar num tooltip/expandable)
+            console.log('Detalhes técnicos:', technicalDetails);
+
+            // Hack rápido para mostrar detalhes na tela de erro para debug
+            setError(`${errorMessage} \n\n[DEBUG INFO]\n${technicalDetails}`);
         } finally {
             setIsLoading(false);
         }
@@ -54,7 +75,7 @@ export const Login: React.FC = () => {
                     {error && (
                         <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg flex items-center">
                             <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                            <span className="text-red-200 text-sm">{error}</span>
+                            <span className="text-red-200 text-sm whitespace-pre-wrap">{error}</span>
                         </div>
                     )}
 
