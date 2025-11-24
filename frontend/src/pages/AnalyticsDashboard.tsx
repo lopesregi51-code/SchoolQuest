@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
     LineChart, Line, PieChart, Pie,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -14,18 +15,31 @@ export const AnalyticsDashboard: React.FC = () => {
     const [timeline, setTimeline] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { user } = useAuth();
+    const [schools, setSchools] = useState<any[]>([]);
+    const [selectedSchool, setSelectedSchool] = useState<string>('');
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (user?.papel === 'admin') {
+            apiClient.get('/escolas/').then(res => setSchools(res.data)).catch(console.error);
+        }
+    }, [user]);
+
+    useEffect(() => {
         fetchAnalytics();
-    }, []);
+    }, [selectedSchool]);
 
     const fetchAnalytics = async () => {
         try {
+            const params = selectedSchool ? `escola_id=${selectedSchool}` : '';
+            const query = params ? `?${params}` : '';
+            const timelineQuery = params ? `?${params}&days=30` : '?days=30';
+
             const [overviewRes, timelineRes, categoriesRes] = await Promise.all([
-                apiClient.get('/analytics/school/overview'),
-                apiClient.get('/analytics/school/activity-timeline?days=30'),
-                apiClient.get('/analytics/school/category-distribution')
+                apiClient.get(`/analytics/school/overview${query}`),
+                apiClient.get(`/analytics/school/activity-timeline${timelineQuery}`),
+                apiClient.get(`/analytics/school/category-distribution${query}`)
             ]);
 
             console.log('Overview:', overviewRes.data);
@@ -110,6 +124,24 @@ export const AnalyticsDashboard: React.FC = () => {
                         </button>
                         <h1 className="text-4xl font-bold">📊 Analytics Dashboard</h1>
                     </div>
+
+                    {user?.papel === 'admin' && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-gray-400">Filtrar por Escola:</span>
+                            <select
+                                value={selectedSchool}
+                                onChange={(e) => setSelectedSchool(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Todas as Escolas</option>
+                                {schools.map((school) => (
+                                    <option key={school.id} value={school.id}>
+                                        {school.nome}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="flex gap-3">
                         <button

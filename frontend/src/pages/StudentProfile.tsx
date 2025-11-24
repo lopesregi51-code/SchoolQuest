@@ -98,11 +98,7 @@ export const StudentProfile: React.FC = () => {
         formData.append('file', file);
 
         try {
-            const response = await apiClient.post('/users/me/avatar', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const response = await apiClient.post('/users/me/avatar', formData);
             setUser(response.data);
             alert('Foto atualizada!');
         } catch (error: any) {

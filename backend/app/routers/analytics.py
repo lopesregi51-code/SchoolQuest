@@ -18,14 +18,12 @@ async def get_school_overview(
         raise HTTPException(403, "Acesso negado")
     
     # Logic for school filtering
-    target_escola_id = current_user.escola_id
-    if current_user.papel == 'admin':
-        if escola_id:
-            target_escola_id = escola_id
-        # If admin and no escola_id provided, target_escola_id remains current_user.escola_id (which might be None)
-        # If it is None, we might want to return global stats or error. 
-        # For now, let's assume if None, we filter by None (which returns nothing usually) or handle global.
-        # Let's default to not filtering if admin and no school provided? No, user asked to see parameters of schools.
+    # Logic for school filtering
+    target_escola_id = None
+    if current_user.papel == 'gestor':
+        target_escola_id = current_user.escola_id
+    elif current_user.papel == 'admin':
+        target_escola_id = escola_id
     
     # Base query filter
     # If target_escola_id is None (e.g. admin without school), we might want to show ALL data?
@@ -99,8 +97,10 @@ async def get_activity_timeline(
     
     start_date = datetime.now() - timedelta(days=days)
     
-    target_escola_id = current_user.escola_id
-    if current_user.papel == 'admin' and escola_id:
+    target_escola_id = None
+    if current_user.papel == 'gestor':
+        target_escola_id = current_user.escola_id
+    elif current_user.papel == 'admin':
         target_escola_id = escola_id
     
     # Missões completadas por dia
@@ -134,8 +134,10 @@ async def get_category_distribution(
     if current_user.papel not in ['gestor', 'admin']:
         raise HTTPException(403, "Acesso negado")
     
-    target_escola_id = current_user.escola_id
-    if current_user.papel == 'admin' and escola_id:
+    target_escola_id = None
+    if current_user.papel == 'gestor':
+        target_escola_id = current_user.escola_id
+    elif current_user.papel == 'admin':
         target_escola_id = escola_id
     
     query = db.query(
