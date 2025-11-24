@@ -38,6 +38,12 @@ export const AdminPanel: React.FC = () => {
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetConfirmation, setResetConfirmation] = useState('');
 
+    // CSV Upload state
+    const [csvFile, setCsvFile] = useState<File | null>(null);
+    const [csvType, setCsvType] = useState('escolas');
+    const [uploadResult, setUploadResult] = useState<any>(null);
+    const [showUploadResult, setShowUploadResult] = useState(false);
+
     const [topSchools, setTopSchools] = useState<any[]>([]);
 
     useEffect(() => {
@@ -188,6 +194,48 @@ export const AdminPanel: React.FC = () => {
             fetchTopSchools();
         } catch (error: any) {
             alert(error.response?.data?.detail || 'Erro ao resetar banco de dados');
+        }
+    };
+
+    // CSV Upload handlers
+    const handleCsvUpload = async () => {
+        if (!csvFile) {
+            alert('Selecione um arquivo CSV primeiro');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', csvFile);
+            formData.append('tipo', csvType);
+
+            const response = await apiClient.post('/admin/upload-csv', formData);
+            setUploadResult(response.data);
+            setShowUploadResult(true);
+            setCsvFile(null);
+
+            // Refresh data
+            fetchEscolas();
+            fetchManagers();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao fazer upload do CSV');
+        }
+    };
+
+    const downloadTemplate = async (tipo: string) => {
+        try {
+            const response = await apiClient.get(`/admin/csv-template/${tipo}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${tipo}_template.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao baixar template');
         }
     };
 
@@ -406,6 +454,86 @@ export const AdminPanel: React.FC = () => {
                 )}
             </div>
 
+            {/* CSV Upload Section */}
+            <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 mt-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <UserPlus className="w-6 h-6 text-green-400" />
+                    Upload em Massa (CSV)
+                </h2>
+                <p className="text-gray-400 mb-6 text-sm">
+                    Importe escolas, gestores ou usuários (alunos/professores) em massa através de arquivos CSV.
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                    {/* Upload Form */}
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-lg">📤 Fazer Upload</h3>
+
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Tipo de dados</label>
+                            <select
+                                value={csvType}
+                                onChange={(e) => setCsvType(e.target.value)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="escolas">Escolas</option>
+                                <option value="gestores">Gestores</option>
+                                <option value="usuarios">Usuários (Alunos/Professores)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Arquivo CSV</label>
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+                            />
+                            {csvFile && <p className="text-xs text-green-400 mt-1">✓ {csvFile.name}</p>}
+                        </div>
+
+                        <button
+                            onClick={handleCsvUpload}
+                            disabled={!csvFile}
+                            className={`w-full py-3 rounded-lg font-bold transition-colors ${csvFile
+                                ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                }`}
+                        >
+                            Upload CSV
+                        </button>
+                    </div>
+
+                    {/* Templates Download */}
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-lg">📥 Download Templates</h3>
+                        <p className="text-xs text-gray-400 mb-4">
+                            Baixe os modelos de CSV para preencher com seus dados
+                        </p>
+
+                        <button
+                            onClick={() => downloadTemplate('escolas')}
+                            className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left px-4"
+                        >
+                            📄 Template: Escolas
+                        </button>
+                        <button
+                            onClick={() => downloadTemplate('gestores')}
+                            className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left px-4"
+                        >
+                            📄 Template: Gestores
+                        </button>
+                        <button
+                            onClick={() => downloadTemplate('usuarios')}
+                            className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left px-4"
+                        >
+                            📄 Template: Usuários
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Danger Zone */}
             <div className="bg-red-900/20 rounded-2xl p-6 border border-red-700/50 mt-8">
                 <h2 className="text-2xl font-bold text-red-500 mb-4 flex items-center gap-2">
@@ -607,6 +735,64 @@ export const AdminPanel: React.FC = () => {
                                 Fechar
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Resultado CSV */}
+            {showUploadResult && uploadResult && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-2xl p-8 border-2 border-blue-600 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+                        <h2 className="text-2xl font-bold text-center mb-4">
+                            {uploadResult.success > 0 ? '✅' : '❌'} Resultado do Upload
+                        </h2>
+
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-green-900/30 border border-green-500 rounded-lg p-4 text-center">
+                                <div className="text-3xl font-bold text-green-400">{uploadResult.success}</div>
+                                <div className="text-sm text-gray-400">Sucesso</div>
+                            </div>
+                            <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 text-center">
+                                <div className="text-3xl font-bold text-red-400">{uploadResult.errors}</div>
+                                <div className="text-sm text-gray-400">Erros</div>
+                            </div>
+                        </div>
+
+                        {uploadResult.created && uploadResult.created.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="font-bold text-green-400 mb-2">✓ Criados com sucesso:</h3>
+                                <div className="bg-gray-700/50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                    <ul className="text-sm space-y-1">
+                                        {uploadResult.created.map((item: string, idx: number) => (
+                                            <li key={idx} className="text-gray-300">• {item}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        {uploadResult.error_details && uploadResult.error_details.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="font-bold text-red-400 mb-2">✗ Erros:</h3>
+                                <div className="bg-gray-700/50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                    <ul className="text-xs space-y-1">
+                                        {uploadResult.error_details.map((error: string, idx: number) => (
+                                            <li key={idx} className="text-red-300">• {error}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => {
+                                setShowUploadResult(false);
+                                setUploadResult(null);
+                            }}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold mt-4"
+                        >
+                            Fechar
+                        </button>
                     </div>
                 </div>
             )}

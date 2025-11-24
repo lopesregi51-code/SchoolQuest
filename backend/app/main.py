@@ -284,6 +284,89 @@ def reset_database(
         logger.error(f"Error resetting database: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao resetar banco: {str(e)}")
 
+# ==================== CSV UPLOAD ENDPOINTS ====================
+
+from fastapi import Form
+from fastapi.responses import Response
+import pandas as pd
+from . import csv_handler
+
+@app.post("/admin/upload-csv")
+async def upload_csv(
+    file: UploadFile = File(...),
+    tipo: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Upload CSV para cadastro em massa.
+    Tipos aceitos: escolas, gestores, usuarios
+    """
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas administradores podem fazer upload de CSV")
+    
+    # Validate type
+    valid_tipos = ["escolas", "gestores", "usuarios"]
+    if tipo not in valid_tipos:
+        raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {', '.join(valid_tipos)}")
+    
+    # Validate file type
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Arquivo deve ser .csv")
+    
+    try:
+        # Read CSV
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+        
+        logger.info(f"Processing CSV upload: type={tipo}, rows={len(df)}, user={current_user.email}")
+        
+        # Process based on type
+        if tipo == "escolas":
+            result = csv_handler.process_escolas_csv(df, db)
+        elif tipo == "gestores":
+            result = csv_handler.process_gestores_csv(df, db)
+        elif tipo == "usuarios":
+            result = csv_handler.process_usuarios_csv(df, db)
+        
+        logger.info(f"CSV processed: success={result['success']}, errors={result['errors']}")
+        return result
+        
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=400, detail="Arquivo CSV está vazio")
+    except pd.errors.ParserError as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao ler CSV: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error processing CSV: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao processar CSV: {str(e)}")
+
+@app.get("/admin/csv-template/{tipo}")
+def download_csv_template(
+    tipo: str,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Download template CSV para upload"""
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas administradores podem baixar templates")
+    
+    templates = {
+        "escolas": "nome\nEscola Exemplo\n",
+        "gestores": "nome,email,senha,escola_nome\nCarlos Silva,carlos@escola.com,senha123,Escola Exemplo\n",
+        "usuarios": "nome,email,senha,papel,serie,disciplina,escola_nome\nJoão Aluno,joao@aluno.com,senha123,aluno,5º Ano,,Escola Exemplo\nProf. Ana,ana@prof.com,profsenha,professor,,,Matemática,Escola Exemplo\n"
+    }
+    
+    if tipo not in templates:
+        raise HTTPException(status_code=404, detail="Template não encontrado")
+    
+    return Response(
+        content=templates[tipo],
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={tipo}_template.csv"}
+    )
+
+# ==================== END CSV ENDPOINTS ====================
+
+
 @app.post("/auth/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint de autenticação - retorna JWT token."""
