@@ -10,3 +10,5 @@ alembic
 qrcode
 pillow
 bcrypt==4.0.1
+psycopg2-binary
+websockets
