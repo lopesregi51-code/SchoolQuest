@@ -752,7 +752,12 @@ def get_professor_concluidas(
 
 @app.get("/missoes/", response_model=list[schemas.MissaoResponse])
 def read_missoes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    missoes = db.query(models.Missao).offset(skip).limit(limit).all()
+    query = db.query(models.Missao).join(models.User, models.Missao.criador_id == models.User.id)
+    
+    if current_user.escola_id:
+        query = query.filter(models.User.escola_id == current_user.escola_id)
+        
+    missoes = query.offset(skip).limit(limit).all()
     
     # Calcular status para o usuário atual
     resultado = []
