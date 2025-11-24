@@ -3,6 +3,7 @@ import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Users, UserPlus, LogOut, Mail, Check, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ClanChat } from '../components/ClanChat';
 
 interface Clan {
     id: number;
@@ -344,6 +345,11 @@ export const ClanPage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Clan Chat */}
+                        <div className="mt-6">
+                            <ClanChat clanId={clan.id} currentUserId={user?.id || 0} />
                         </div>
                     </div>
                 )}

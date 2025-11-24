@@ -43,13 +43,18 @@ export const UserProfile: React.FC = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<UserProfileData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+        nome: '',
+        email: '',
+        senha: '',
+        bio: '',
+        interesses: ''
+    });
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                // If id is present, fetch that user. If not, fetch current user (me)
-                // But wait, our endpoint is /users/{id}/profile. 
-                // If we are viewing "my profile", we can use currentUser.id
                 const targetId = id || currentUser?.id;
                 if (!targetId) return;
 
@@ -65,6 +70,44 @@ export const UserProfile: React.FC = () => {
 
         fetchProfile();
     }, [id, currentUser]);
+
+    useEffect(() => {
+        if (profile) {
+            setEditForm({
+                nome: profile.nome,
+                email: profile.email,
+                senha: '',
+                bio: profile.bio || '',
+                interesses: profile.interesses || ''
+            });
+        }
+    }, [profile]);
+
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!profile) return;
+
+        try {
+            const data: any = {
+                nome: editForm.nome,
+                email: editForm.email,
+                bio: editForm.bio,
+                interesses: editForm.interesses
+            };
+
+            if (editForm.senha) {
+                data.senha = editForm.senha;
+            }
+
+            const response = await apiClient.put(`/users/${profile.id}`, data);
+            setProfile({ ...profile, ...response.data });
+            setIsEditing(false);
+            alert('Perfil atualizado com sucesso!');
+        } catch (error: any) {
+            console.error('Erro ao atualizar perfil:', error);
+            alert(error.response?.data?.detail || 'Erro ao atualizar perfil');
+        }
+    };
 
     const handleDeleteUser = async () => {
         if (!profile) return;
@@ -84,7 +127,9 @@ export const UserProfile: React.FC = () => {
 
     const isAdmin = currentUser?.papel === 'admin';
     const isGestor = currentUser?.papel === 'gestor';
+    const isOwner = currentUser?.id === profile.id;
     const canDelete = isAdmin || (isGestor && profile.escola_nome === currentUser?.escola_nome);
+    const canEdit = isOwner || isAdmin || (isGestor && profile.escola_nome === currentUser?.escola_nome);
 
     return (
         <div className="min-h-screen bg-dark text-white p-6">
@@ -143,15 +188,27 @@ export const UserProfile: React.FC = () => {
                             </div>
                         </div>
 
-                        {canDelete && currentUser?.id !== profile.id && (
-                            <button
-                                onClick={handleDeleteUser}
-                                className="absolute top-4 right-4 p-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
-                                title="Deletar Usuário"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        )}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                            {canEdit && (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-colors"
+                                    title="Editar Perfil"
+                                >
+                                    ✏️
+                                </button>
+                            )}
+
+                            {canDelete && !isOwner && (
+                                <button
+                                    onClick={handleDeleteUser}
+                                    className="p-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                                    title="Deletar Usuário"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -246,6 +303,82 @@ export const UserProfile: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {isEditing && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700">
+                        <h2 className="text-2xl font-bold mb-6">Editar Perfil</h2>
+                        <form onSubmit={handleUpdateUser} className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Nome</label>
+                                <input
+                                    type="text"
+                                    value={editForm.nome}
+                                    onChange={e => setEditForm({ ...editForm, nome: e.target.value })}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    value={editForm.email}
+                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Bio (Sobre você)</label>
+                                <textarea
+                                    value={editForm.bio}
+                                    onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary h-20 resize-none"
+                                    placeholder="Conte um pouco sobre você..."
+                                    maxLength={200}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Interesses</label>
+                                <input
+                                    type="text"
+                                    value={editForm.interesses}
+                                    onChange={e => setEditForm({ ...editForm, interesses: e.target.value })}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                                    placeholder="Ex: Matemática, RPG, Futebol..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Nova Senha (opcional)</label>
+                                <input
+                                    type="password"
+                                    value={editForm.senha}
+                                    onChange={e => setEditForm({ ...editForm, senha: e.target.value })}
+                                    placeholder="Deixe em branco para manter a atual"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditing(false)}
+                                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

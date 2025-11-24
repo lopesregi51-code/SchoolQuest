@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 import logging
 from datetime import datetime, timedelta
 from . import models, schemas, database, auth
-from .routers import shop, mural
+from .routers import shop, mural, chat, mobile, analytics
+from .websocket import manager, NotificationType
 from .config import settings
 import os
 import qrcode
@@ -44,6 +45,9 @@ models.Base.metadata.create_all(bind=database.engine)
 # Routers
 app.include_router(shop.router)
 app.include_router(mural.router)
+app.include_router(chat.router)
+app.include_router(mobile.router)
+app.include_router(analytics.router)
 
 # Static files
 app.mount("/media", StaticFiles(directory="media"), name="media")
@@ -116,6 +120,21 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# WebSocket endpoint for real-time notifications
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket, user_id: int):
+    await manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Keep connection alive
+            data = await websocket.receive_text()
+            # Echo back for heartbeat
+            await websocket.send_text(f"pong: {data}")
+    except Exception as e:
+        logger.error(f"WebSocket error for user {user_id}: {e}")
+    finally:
+        manager.disconnect(user_id)
 
 @app.get("/")
 def read_root():
@@ -470,13 +489,13 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db), current_user: 
     ]
     
     # Mural Posts (Last 5)
-    mural_posts = db.query(models.MuralPost).filter(models.MuralPost.user_id == user.id).order_by(models.MuralPost.criado_em.desc()).limit(5).all()
+    mural_posts = db.query(models.MuralPost).filter(models.MuralPost.user_id == user.id).order_by(models.MuralPost.data_criacao.desc()).limit(5).all()
     
     profile_data["posts"] = [
         {
             "id": post.id,
-            "conteudo": post.conteudo,
-            "likes": post.likes,
+            "conteudo": post.texto,  # Fixed: MuralPost uses 'texto' not 'conteudo'
+            "likes": len(post.likes) if post.likes else 0,  # Fixed: count likes
             "data": post.data_criacao
         } for post in mural_posts
     ]
@@ -484,9 +503,9 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db), current_user: 
     return profile_data
 
 @app.put("/users/{user_id}", response_model=schemas.UserResponse)
-def update_user(user_id: int, user_update: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def update_user(user_id: int, user_update: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Update user information."""
-    if current_user.papel not in ['gestor', 'admin']:
+    if current_user.id != user_id and current_user.papel not in ['gestor', 'admin']:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -497,13 +516,29 @@ def update_user(user_id: int, user_update: schemas.UserCreate, db: Session = Dep
     if current_user.papel == 'gestor' and db_user.escola_id != current_user.escola_id:
         raise HTTPException(status_code=403, detail="Você só pode editar usuários da sua escola")
     
-    # Update fields
-    db_user.nome = user_update.nome
-    db_user.email = user_update.email
-    db_user.papel = user_update.papel
-    db_user.serie_id = user_update.serie_id
-    db_user.disciplina = user_update.disciplina
-    db_user.escola_id = user_update.escola_id
+    # Update fields based on what was provided
+    update_data = user_update.dict(exclude_unset=True)
+    
+    # Fields that any user can update
+    if 'nome' in update_data:
+        db_user.nome = update_data['nome']
+    if 'email' in update_data:
+        db_user.email = update_data['email']
+    if 'bio' in update_data:
+        db_user.bio = update_data['bio']
+    if 'interesses' in update_data:
+        db_user.interesses = update_data['interesses']
+    
+    # Sensitive fields can only be changed by admin/gestor
+    if current_user.papel in ['gestor', 'admin']:
+        if 'papel' in update_data:
+            db_user.papel = update_data['papel']
+        if 'serie_id' in update_data:
+            db_user.serie_id = update_data['serie_id']
+        if 'disciplina' in update_data:
+            db_user.disciplina = update_data['disciplina']
+        if 'escola_id' in update_data:
+            db_user.escola_id = update_data['escola_id']
     
     # Update password if provided
     if user_update.senha:

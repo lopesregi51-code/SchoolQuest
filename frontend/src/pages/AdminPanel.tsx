@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, Building, LogOut, Trash2, Edit, Copy, CheckCircle } from 'lucide-react';
+import { UserPlus, Building, LogOut, Trash2, Edit, Copy, CheckCircle, BarChart2 } from 'lucide-react';
 import apiClient from '../api/client';
+import { useNavigate } from 'react-router-dom';
 
 interface Escola {
     id: number;
@@ -20,6 +21,7 @@ interface Manager {
 
 export const AdminPanel: React.FC = () => {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [escolas, setEscolas] = useState<Escola[]>([]);
     const [managers, setManagers] = useState<Manager[]>([]);
     const [newSchoolName, setNewSchoolName] = useState('');
@@ -174,13 +176,22 @@ export const AdminPanel: React.FC = () => {
                     <h1 className="text-3xl font-bold text-red-500">Painel Administrativo</h1>
                     <p className="text-gray-400">Gerencie escolas e acessos</p>
                 </div>
-                <button
-                    onClick={logout}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Sair
-                </button>
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => navigate('/analytics')}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-bold transition-colors"
+                    >
+                        <BarChart2 className="w-4 h-4" />
+                        Relatórios
+                    </button>
+                    <button
+                        onClick={logout}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Sair
+                    </button>
+                </div>
             </header>
 
             {/* Top Schools Chart */}

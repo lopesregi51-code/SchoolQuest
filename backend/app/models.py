@@ -257,3 +257,33 @@ class PostLike(Base):
 
     post = relationship("MuralPost", back_populates="likes")
     user = relationship("User")
+
+class DeviceToken(Base):
+    """Modelo para tokens de dispositivos móveis (push notifications)"""
+    __tablename__ = "device_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    device_token = Column(String, unique=True, index=True)
+    platform = Column(String)  # ios, android
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+
+class ClanMessage(Base):
+    """Modelo para mensagens de chat do clã"""
+    __tablename__ = "clan_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clans.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    edited = Column(Boolean, default=False)
+    edited_at = Column(DateTime, nullable=True)
+    
+    clan = relationship("Clan")
+    user = relationship("User")
+

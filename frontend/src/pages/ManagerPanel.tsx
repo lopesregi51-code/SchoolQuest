@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image, LogOut } from 'lucide-react';
+import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image, LogOut, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -342,6 +342,13 @@ export const ManagerPanel: React.FC = () => {
                 >
                     <Users className="w-5 h-5" />
                     Gerenciar Séries
+                </button>
+                <button
+                    onClick={() => navigate('/analytics')}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-bold transition-colors"
+                >
+                    <BarChart2 className="w-5 h-5" />
+                    Relatórios
                 </button>
             </div>
 

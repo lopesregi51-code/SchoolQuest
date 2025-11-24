@@ -46,6 +46,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     senha: str
 
+class UserUpdate(UserBase):
+    senha: Optional[str] = None
+    nome: Optional[str] = None
+    email: Optional[str] = None
+    papel: Optional[str] = None
+
 class UserResponse(UserBase):
     id: int
     pontos: int

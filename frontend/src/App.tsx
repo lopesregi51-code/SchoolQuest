@@ -11,6 +11,7 @@ import { ManagerPanel } from './pages/ManagerPanel';
 import { AdminPanel } from './pages/AdminPanel';
 import { MuralPage } from './pages/MuralPage';
 import { ShopPage } from './pages/ShopPage';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import { BookOpen, Shield, Trophy } from 'lucide-react';
 
 const HomePage = () => {
@@ -151,6 +152,11 @@ function App() {
           <Route path="/shop" element={
             <ProtectedRoute allowedRoles={['aluno']}>
               <ShopPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+              <AnalyticsDashboard />
             </ProtectedRoute>
           } />
           <Route path="/professor" element={<Navigate to="/" replace />} />
