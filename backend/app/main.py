@@ -1036,6 +1036,8 @@ async def import_users(file: UploadFile = File(...), db: Session = Depends(get_d
     count = 0
     errors = []
     row_num = 1
+    series_created = []  # Track created series
+    series_cache = {}  # Cache to avoid repeated queries
     
     for row in csv_reader:
         row_num += 1
@@ -1049,16 +1051,41 @@ async def import_users(file: UploadFile = File(...), db: Session = Depends(get_d
                 errors.append(f"Linha {row_num}: Email {email} já cadastrado")
                 continue
 
-            # Resolve serie_id if provided
+            # Resolve or create serie_id if provided
             serie_id = None
-            serie_nome = row.get('serie')
+            serie_nome = row.get('serie', '').strip()
+            
             if serie_nome:
-                serie = db.query(models.Serie).filter(
-                    models.Serie.nome == serie_nome,
-                    models.Serie.escola_id == current_user.escola_id
-                ).first()
-                if serie:
-                    serie_id = serie.id
+                # Check cache first
+                if serie_nome in series_cache:
+                    serie_id = series_cache[serie_nome]
+                else:
+                    # Query database
+                    serie = db.query(models.Serie).filter(
+                        models.Serie.nome == serie_nome,
+                        models.Serie.escola_id == current_user.escola_id
+                    ).first()
+                    
+                    if serie:
+                        # Serie exists
+                        serie_id = serie.id
+                        series_cache[serie_nome] = serie_id
+                    else:
+                        # Create new serie
+                        try:
+                            new_serie = models.Serie(
+                                nome=serie_nome,
+                                escola_id=current_user.escola_id
+                            )
+                            db.add(new_serie)
+                            db.flush()  # Get the ID without committing
+                            serie_id = new_serie.id
+                            series_cache[serie_nome] = serie_id
+                            series_created.append(serie_nome)
+                            logger.info(f"Auto-created serie: {serie_nome} (ID: {serie_id})")
+                        except Exception as e:
+                            errors.append(f"Linha {row_num}: Erro ao criar série '{serie_nome}': {str(e)}")
+                            continue
             
             db_user = models.User(
                 email=email,
@@ -1081,8 +1108,19 @@ async def import_users(file: UploadFile = File(...), db: Session = Depends(get_d
         logger.error(f"Transaction error during import: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar dados no banco")
 
-    logger.info(f"Users imported: {count} successful, {len(errors)} errors")
-    return {"imported": count, "errors": errors}
+    logger.info(f"Users imported: {count} successful, {len(errors)} errors, {len(series_created)} series created")
+    
+    result = {
+        "imported": count,
+        "errors": errors
+    }
+    
+    # Add info about created series if any
+    if series_created:
+        result["series_created"] = list(set(series_created))  # Remove duplicates
+        result["message"] = f"{count} usuários importados. {len(result['series_created'])} séries criadas automaticamente: {', '.join(result['series_created'])}"
+    
+    return result
 
 @app.delete("/users/all")
 def delete_all_users(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
