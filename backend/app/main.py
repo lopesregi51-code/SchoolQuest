@@ -58,7 +58,14 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.on_event("startup")
 async def startup_event():
-    """Create default users on startup."""
+    """Create default users on startup and backup database."""
+    # Importar backup manager
+    from .db_backup import backup_manager
+    
+    # Criar backup antes de qualquer operação
+    logger.info("Creating automatic backup on startup...")
+    backup_manager.create_backup(prefix="startup")
+    
     db = database.SessionLocal()
     try:
         # Check for admin user
@@ -83,6 +90,13 @@ async def startup_event():
         logger.error(f"Error creating default users: {e}")
     finally:
         db.close()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Backup database on shutdown."""
+    from .db_backup import backup_manager
+    logger.info("Creating automatic backup on shutdown...")
+    backup_manager.create_backup(prefix="shutdown")
 
 
 # Global Exception Handlers
@@ -146,6 +160,47 @@ def read_root():
         "environment": settings.environment,
         "docs": "/docs"
     }
+
+@app.get("/admin/backups")
+def list_backups(current_user: models.User = Depends(auth.get_current_user)):
+    """Lista todos os backups disponíveis (apenas admin)."""
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar backups")
+    
+    from .db_backup import backup_manager
+    backups = backup_manager.list_backups()
+    return {"backups": backups, "total": len(backups)}
+
+@app.post("/admin/backup/create")
+def create_manual_backup(current_user: models.User = Depends(auth.get_current_user)):
+    """Cria um backup manual do banco de dados (apenas admin)."""
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas administradores podem criar backups")
+    
+    from .db_backup import backup_manager
+    backup_path = backup_manager.create_backup(prefix="manual")
+    
+    if backup_path:
+        return {"message": "Backup criado com sucesso", "path": backup_path}
+    else:
+        raise HTTPException(status_code=500, detail="Erro ao criar backup")
+
+@app.post("/admin/backup/restore/{backup_name}")
+def restore_backup(backup_name: str, current_user: models.User = Depends(auth.get_current_user)):
+    """Restaura um backup específico (apenas admin)."""
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Apenas administradores podem restaurar backups")
+    
+    from .db_backup import backup_manager
+    # Extract prefix from backup name
+    prefix = backup_name.split("_backup_")[0] if "_backup_" in backup_name else "manual"
+    
+    success = backup_manager.restore_latest(prefix=prefix)
+    
+    if success:
+        return {"message": f"Backup {backup_name} restaurado com sucesso"}
+    else:
+        raise HTTPException(status_code=500, detail="Erro ao restaurar backup")
 
 @app.post("/auth/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

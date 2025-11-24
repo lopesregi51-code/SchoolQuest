@@ -1,12 +1,47 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, pool
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
+import logging
 
-engine = create_engine(
-    settings.database_url, 
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {}
-)
+logger = logging.getLogger(__name__)
+
+# Configurações otimizadas para SQLite
+sqlite_connect_args = {
+    "check_same_thread": False,
+    "timeout": 30,  # Aumenta timeout para evitar locks
+}
+
+# Configurações do engine
+engine_config = {
+    "connect_args": sqlite_connect_args if "sqlite" in settings.database_url else {},
+    "pool_pre_ping": True,  # Verifica conexões antes de usar
+    "pool_recycle": 3600,   # Recicla conexões a cada hora
+}
+
+# Se for SQLite, adiciona configurações específicas
+if "sqlite" in settings.database_url:
+    engine_config["poolclass"] = pool.StaticPool  # Melhor para SQLite em desenvolvimento
+
+engine = create_engine(settings.database_url, **engine_config)
+
+# Configurar WAL mode para SQLite (melhor concorrência)
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """Configura pragmas do SQLite para melhor performance e confiabilidade."""
+    if "sqlite" in settings.database_url:
+        cursor = dbapi_conn.cursor()
+        # WAL mode permite leituras durante escritas
+        cursor.execute("PRAGMA journal_mode=WAL")
+        # Sincronização normal (balance entre segurança e performance)
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        # Cache maior
+        cursor.execute("PRAGMA cache_size=-64000")  # 64MB
+        # Timeout para locks
+        cursor.execute("PRAGMA busy_timeout=30000")  # 30 segundos
+        cursor.close()
+        logger.info("SQLite pragmas configured for better reliability")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
