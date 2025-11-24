@@ -24,7 +24,7 @@ export const ClanChat: React.FC<ClanChatProps> = ({ clanId, currentUserId }) => 
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
-    const { ws, notifications } = useWebSocket();
+    const { notifications } = useWebSocket();
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -199,8 +199,8 @@ export const ClanChat: React.FC<ClanChatProps> = ({ clanId, currentUserId }) => 
                                             )}
                                             <div
                                                 className={`px-4 py-2 rounded-2xl ${isOwn
-                                                        ? 'bg-primary text-white'
-                                                        : 'bg-gray-700 text-gray-100'
+                                                    ? 'bg-primary text-white'
+                                                    : 'bg-gray-700 text-gray-100'
                                                     }`}
                                             >
                                                 <p className="text-sm break-words">{msg.message}</p>
