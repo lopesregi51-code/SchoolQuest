@@ -116,7 +116,7 @@ export const StudentProfile: React.FC = () => {
                 <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 flex flex-col md:flex-row gap-8 items-center md:items-start">
                     {/* Avatar Section */}
                     <div className="relative group">
-                        <div className="w-32 h-32 rounded-full bg-gray-700 border-4 border-primary overflow-hidden flex items-center justify-center">
+                        <div className="w-32 h-32 rounded-full bg-gray-700 border-4 border-primary overflow-hidden flex items-center justify-center relative">
                             {user.avatar_url ? (
                                 <img
                                     src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_BASE_URL}${user.avatar_url}`}
@@ -126,20 +126,20 @@ export const StudentProfile: React.FC = () => {
                             ) : (
                                 <User className="w-16 h-16 text-gray-400" />
                             )}
+                            {/* Upload Button */}
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                <Upload className="w-6 h-6 text-white" />
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handlePhotoUpload}
+                                    className="hidden"
+                                />
+                            </label>
                         </div>
                         <div className="absolute -bottom-2 -right-2 bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-gray-800">
                             {user.nivel}
                         </div>
-                        {/* Upload Button */}
-                        <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
-                            <Upload className="w-6 h-6 text-white" />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePhotoUpload}
-                                className="hidden"
-                            />
-                        </label>
                     </div>
 
                     {/* Info Section */}

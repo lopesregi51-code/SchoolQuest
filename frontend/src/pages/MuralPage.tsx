@@ -178,9 +178,13 @@ export const MuralPage: React.FC = () => {
                                             {post.user_nome.charAt(0)}
                                         </div>
                                         <div>
-                                            <Link to={`/profile/${post.user_id}`} className="text-sm font-bold leading-tight hover:text-blue-400 hover:underline">
-                                                {post.user_nome}
-                                            </Link>
+                                            {post.user_id ? (
+                                                <Link to={`/profile/${post.user_id}`} className="text-sm font-bold leading-tight hover:text-blue-400 hover:underline">
+                                                    {post.user_nome}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-sm font-bold leading-tight">{post.user_nome}</span>
+                                            )}
                                             <p className="text-[10px] text-gray-500">{post.data_criacao}</p>
                                         </div>
                                     </div>
