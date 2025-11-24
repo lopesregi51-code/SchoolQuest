@@ -9,6 +9,8 @@ venv/
 ! .env.production.example
 *.db
 *.sqlite3
+*.db-wal
+*.db-shm
 
 # Node
 node_modules/
