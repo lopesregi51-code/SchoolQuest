@@ -218,7 +218,9 @@ export const AdminPanel: React.FC = () => {
             fetchEscolas();
             fetchManagers();
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Erro ao fazer upload do CSV');
+            console.error('CSV Upload Error:', error);
+            const errorMessage = error.response?.data?.detail || error.message || 'Erro ao fazer upload do CSV';
+            alert(`Erro no upload: ${errorMessage}`);
         }
     };
 
