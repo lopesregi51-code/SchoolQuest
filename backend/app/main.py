@@ -200,6 +200,13 @@ def restore_backup(backup_name: str, current_user: models.User = Depends(auth.ge
     if success:
         return {"message": f"Backup {backup_name} restaurado com sucesso"}
     else:
+        raise HTTPException(status_code=500, detail="Erro ao restaurar backup")
+
+@app.post("/admin/clear-all")
+def clear_all_data(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
     """Apaga todos os registros de todas as tabelas (mantém a estrutura)."""
     if current_user.papel != "admin":
         raise HTTPException(status_code=403, detail="Apenas administradores podem limpar dados")
