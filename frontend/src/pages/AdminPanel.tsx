@@ -209,7 +209,19 @@ export const AdminPanel: React.FC = () => {
             formData.append('file', csvFile);
             formData.append('tipo', csvType);
 
-            const response = await apiClient.post('/admin/upload-csv', formData);
+            console.log('Uploading CSV:', {
+                fileName: csvFile.name,
+                fileSize: csvFile.size,
+                tipo: csvType
+            });
+
+            const response = await apiClient.post('/admin/upload-csv', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            console.log('Upload success:', response.data);
             setUploadResult(response.data);
             setShowUploadResult(true);
             setCsvFile(null);
@@ -219,6 +231,11 @@ export const AdminPanel: React.FC = () => {
             fetchManagers();
         } catch (error: any) {
             console.error('CSV Upload Error:', error);
+            console.error('Error details:', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
             const errorMessage = error.response?.data?.detail || error.message || 'Erro ao fazer upload do CSV';
             alert(`Erro no upload: ${errorMessage}`);
         }
