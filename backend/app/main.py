@@ -72,11 +72,22 @@ async def startup_event():
         admin = db.query(models.User).filter(models.User.email == "admin@test.com").first()
         if not admin:
             logger.info("Creating default admin user...")
+            
+            # Create admin school first
+            admin_school = db.query(models.Escola).filter(models.Escola.nome == "Escola Administração").first()
+            if not admin_school:
+                admin_school = models.Escola(nome="Escola Administração")
+                db.add(admin_school)
+                db.flush()
+                logger.info(f"Admin school created: {admin_school.nome}")
+            
+            # Create admin user
             admin_user = models.User(
                 email="admin@test.com",
                 nome="Administrador",
                 senha_hash=auth.get_password_hash("admin123"),
                 papel="admin",
+                escola_id=admin_school.id,
                 pontos=1000,
                 xp=1000,
                 nivel=10
@@ -86,6 +97,16 @@ async def startup_event():
             logger.info("Default admin user created: admin@test.com / admin123")
         else:
             logger.info("Admin user already exists.")
+            # Ensure admin has escola_id
+            if not admin.escola_id:
+                admin_school = db.query(models.Escola).filter(models.Escola.nome == "Escola Administração").first()
+                if not admin_school:
+                    admin_school = models.Escola(nome="Escola Administração")
+                    db.add(admin_school)
+                    db.flush()
+                admin.escola_id = admin_school.id
+                db.commit()
+                logger.info(f"Admin escola_id updated to {admin.escola_id}")
     except Exception as e:
         logger.error(f"Error creating default users: {e}")
     finally:
@@ -97,6 +118,59 @@ async def shutdown_event():
     from .db_backup import backup_manager
     logger.info("Creating automatic backup on shutdown...")
     backup_manager.create_backup(prefix="shutdown")
+
+# Public endpoint to reinitialize database (useful after deployment issues)
+@app.post("/init-db")
+def init_database(db: Session = Depends(get_db)):
+    """Public endpoint to initialize database with default admin user (emergency recovery)."""
+    try:
+        # Check for admin user
+        admin = db.query(models.User).filter(models.User.email == "admin@test.com").first()
+        
+        if admin:
+            # Admin exists, ensure it has escola_id
+            if not admin.escola_id:
+                admin_school = db.query(models.Escola).filter(models.Escola.nome == "Escola Administração").first()
+                if not admin_school:
+                    admin_school = models.Escola(nome="Escola Administração")
+                    db.add(admin_school)
+                    db.flush()
+                admin.escola_id = admin_school.id
+                db.commit()
+                return {"message": "Admin user updated", "email": "admin@test.com", "password": "admin123"}
+            return {"message": "Admin user already exists", "email": "admin@test.com", "password": "admin123"}
+        
+        # Create admin school
+        admin_school = db.query(models.Escola).filter(models.Escola.nome == "Escola Administração").first()
+        if not admin_school:
+            admin_school = models.Escola(nome="Escola Administração")
+            db.add(admin_school)
+            db.flush()
+        
+        # Create admin user
+        admin_user = models.User(
+            email="admin@test.com",
+            nome="Administrador",
+            senha_hash=auth.get_password_hash("admin123"),
+            papel="admin",
+            escola_id=admin_school.id,
+            pontos=1000,
+            xp=1000,
+            nivel=10
+        )
+        db.add(admin_user)
+        db.commit()
+        
+        return {
+            "message": "Admin user created successfully",
+            "email": "admin@test.com",
+            "password": "admin123"
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in init-db: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to initialize database: {str(e)}")
+
 
 
 # Global Exception Handlers
