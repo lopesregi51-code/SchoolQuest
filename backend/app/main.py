@@ -211,7 +211,7 @@ def clear_all_data(
     if current_user.papel != "admin":
         raise HTTPException(status_code=403, detail="Apenas administradores podem limpar dados")
     try:
-        tables = [models.User, models.Escola, models.Serie, models.Missao, models.MissaoConcluida, models.Transacao, models.ShopItem, models.UserItem]
+        tables = [models.UserItem, models.Item, models.Transacao, models.MissaoConcluida, models.Missao, models.Serie, models.User, models.Escola]
         for tbl in tables:
             db.query(tbl).delete()
         db.commit()
