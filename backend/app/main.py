@@ -211,16 +211,54 @@ def clear_all_data(
     if current_user.papel != "admin":
         raise HTTPException(status_code=403, detail="Apenas administradores podem limpar dados")
     try:
-        tables = [models.UserItem, models.Item, models.Transacao, models.MissaoConcluida, models.Missao, models.Serie, models.User, models.Escola]
-        for tbl in tables:
+        # Delete in order respecting foreign key constraints
+        # First: tables that reference other tables (children)
+        # Last: tables that are referenced (parents)
+        
+        tables_order = [
+            # Level 1: Tables that reference User, Missao, Clan, etc
+            models.PostLike,
+            models.ClanMessage,
+            models.DeviceToken,
+            models.UserConquista,
+            models.Purchase,
+            models.MissaoAtribuida,
+            models.MissaoConcluida,
+            models.UserItem,
+            models.Transacao,
+            models.ClanMember,
+            models.ClanInvite,
+            
+            # Level 2: Tables that reference basic entities
+            models.MuralPost,
+            models.Clan,
+            models.Missao,
+            
+            # Level 3: Independent or simple FK tables
+            models.Reward,
+            models.Conquista,
+            models.Item,
+            
+            # Level 4: User references Serie and Escola
+            models.User,
+            
+            # Level 5: Serie references Escola
+            models.Serie,
+            
+            # Level 6: Final parent table
+            models.Escola,
+        ]
+        
+        for tbl in tables_order:
             db.query(tbl).delete()
+        
         db.commit()
         logger.info(f"Admin {current_user.email} limpou todas as tabelas")
         return {"message": "Todos os dados foram apagados (estrutura mantida)"}
     except Exception as e:
         db.rollback()
         logger.error(f"Error clearing data: {e}")
-        raise HTTPException(status_code=500, detail="Falha ao limpar dados")
+        raise HTTPException(status_code=500, detail=f"Falha ao limpar dados: {str(e)}")
 
 from fastapi import Form
 from fastapi.responses import Response
