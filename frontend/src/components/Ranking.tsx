@@ -84,7 +84,7 @@ export const Ranking: React.FC = () => {
                                 </div>
 
                                 <div className="flex-1">
-                                    <Link to={`/profile/${user.id}`} className="font-bold text-white hover:text-blue-400 hover:underline">
+                                    <Link to={user.id ? `/profile/${user.id}` : '#'} className={`font-bold text-white hover:text-blue-400 hover:underline ${!user.id ? 'pointer-events-none text-gray-400' : ''}`}>
                                         {user.nome}
                                     </Link>
                                     <p className="text-xs text-gray-400">Nível {user.nivel} • {user.serie}</p>
@@ -131,7 +131,7 @@ export const Ranking: React.FC = () => {
                                         <tr key={index} className="hover:bg-gray-700/30">
                                             <td className="py-3 pl-4 font-bold text-gray-400">#{index + 1}</td>
                                             <td className="py-3">
-                                                <Link to={`/profile/${user.id}`} className="font-bold hover:text-blue-400 hover:underline">
+                                                <Link to={user.id ? `/profile/${user.id}` : '#'} className={`font-bold hover:text-blue-400 hover:underline ${!user.id ? 'pointer-events-none text-gray-400' : ''}`}>
                                                     {user.nome}
                                                 </Link>
                                                 <div className="text-xs text-gray-500">{user.serie} • Nível {user.nivel}</div>

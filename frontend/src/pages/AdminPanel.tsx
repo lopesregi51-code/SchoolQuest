@@ -35,8 +35,10 @@ export const AdminPanel: React.FC = () => {
     const [editPassword, setEditPassword] = useState('');
     const [createdCredentials, setCreatedCredentials] = useState<{ nome: string, email: string, senha: string, escola: string } | null>(null);
     const [copied, setCopied] = useState(false);
-    const [showResetModal, setShowResetModal] = useState(false);
-    const [resetConfirmation, setResetConfirmation] = useState('');
+
+    // New state for clear-all functionality
+    const [showClearAllModal, setShowClearAllModal] = useState(false);
+    const [clearAllConfirmation, setClearAllConfirmation] = useState('');
 
     // CSV Upload state
     const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -175,25 +177,22 @@ export const AdminPanel: React.FC = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleResetDatabase = async () => {
-        if (resetConfirmation !== 'CONFIRMO RESET DO BANCO') {
+    const handleClearAll = async () => {
+        if (clearAllConfirmation !== 'CONFIRMO LIMPAR') {
             alert('Texto de confirmação incorreto.');
             return;
         }
-
         try {
-            const response = await apiClient.post('/admin/database/reset', {
-                confirmation: resetConfirmation
-            });
-            alert(response.data.message + '\n' + response.data.warning);
-            setShowResetModal(false);
-            setResetConfirmation('');
+            const response = await apiClient.post('/admin/clear-all');
+            alert(response.data.message);
+            setShowClearAllModal(false);
+            setClearAllConfirmation('');
             // Refresh data
             fetchEscolas();
             fetchManagers();
             fetchTopSchools();
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Erro ao resetar banco de dados');
+            alert(error.response?.data?.detail || 'Erro ao limpar dados');
         }
     };
 
@@ -563,16 +562,16 @@ export const AdminPanel: React.FC = () => {
                     Ações nesta área são destrutivas e irreversíveis. Tenha muito cuidado.
                 </p>
                 <button
-                    onClick={() => setShowResetModal(true)}
+                    onClick={() => setShowClearAllModal(true)}
                     className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold flex items-center gap-2 transition-colors"
                 >
                     <Trash2 className="w-5 h-5" />
-                    Resetar Banco de Dados
+                    Limpar Todos os Dados
                 </button>
             </div>
 
-            {/* Modal de Reset */}
-            {showResetModal && (
+            {/* Modal de Clear All */}
+            {showClearAllModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-2xl p-8 border-2 border-red-600 max-w-md w-full shadow-2xl">
                         <div className="flex justify-center mb-6">
@@ -580,46 +579,40 @@ export const AdminPanel: React.FC = () => {
                                 <Trash2 className="w-10 h-10 text-red-500" />
                             </div>
                         </div>
-                        <h2 className="text-2xl font-bold text-center mb-2 text-white">Resetar Banco de Dados?</h2>
+                        <h2 className="text-2xl font-bold text-center mb-2 text-white">Limpar Todos os Dados?</h2>
                         <p className="text-center text-gray-400 mb-6">
-                            Isso apagará <strong>TODOS</strong> os dados (usuários, escolas, missões) e recriará apenas o admin padrão.
+                            Isso apagará <strong>TODOS</strong> os dados (usuários, escolas, missões) mas manterá a estrutura das tabelas.
                             <br /><br />
                             Esta ação não pode ser desfeita.
                         </p>
-
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-1">
-                                    Digite "CONFIRMO RESET DO BANCO" para confirmar:
+                                    Digite "CONFIRMO LIMPAR" para confirmar:
                                 </label>
                                 <input
                                     type="text"
-                                    value={resetConfirmation}
-                                    onChange={(e) => setResetConfirmation(e.target.value)}
+                                    value={clearAllConfirmation}
+                                    onChange={(e) => setClearAllConfirmation(e.target.value)}
                                     className="w-full px-4 py-2 bg-gray-900 border border-red-900 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                                    placeholder="CONFIRMO RESET DO BANCO"
+                                    placeholder="CONFIRMO LIMPAR"
                                 />
                             </div>
-
                             <div className="flex gap-3 mt-6">
                                 <button
-                                    onClick={() => {
-                                        setShowResetModal(false);
-                                        setResetConfirmation('');
-                                    }}
+                                    onClick={() => { setShowClearAllModal(false); setClearAllConfirmation(''); }}
                                     className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold"
                                 >
                                     Cancelar
                                 </button>
                                 <button
-                                    onClick={handleResetDatabase}
-                                    disabled={resetConfirmation !== 'CONFIRMO RESET DO BANCO'}
-                                    className={`flex-1 py-3 rounded-lg font-bold transition-colors ${resetConfirmation === 'CONFIRMO RESET DO BANCO'
+                                    onClick={handleClearAll}
+                                    disabled={clearAllConfirmation !== 'CONFIRMO LIMPAR'}
+                                    className={`flex-1 py-3 rounded-lg font-bold transition-colors ${clearAllConfirmation === 'CONFIRMO LIMPAR'
                                         ? 'bg-red-600 hover:bg-red-700 text-white'
-                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                        }`}
+                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
                                 >
-                                    Resetar Tudo
+                                    Confirmar
                                 </button>
                             </div>
                         </div>

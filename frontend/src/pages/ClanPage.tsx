@@ -293,7 +293,7 @@ export const ClanPage: React.FC = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <Link to={`/profile/${member.user_id}`} className="font-bold hover:text-blue-400 hover:underline">
+                                                <Link to={member.user_id ? `/profile/${member.user_id}` : '#'} className={`font-bold hover:text-blue-400 hover:underline ${!member.user_id ? 'pointer-events-none text-gray-400' : ''}`}>
                                                     {member.user_nome}
                                                 </Link>
                                                 <span className={`block w-fit text-xs px-2 py-0.5 rounded-full mt-1 ${member.papel === 'lider' ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-600 text-gray-300'
