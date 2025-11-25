@@ -293,6 +293,23 @@ def reset_database(
 
 # ==================== CSV UPLOAD ENDPOINTS ====================
 
+@app.post("/admin/clear-all")
+def clear_all_data(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """Apaga todos os registros de todas as tabelas (mantém a estrutura)."""
+    if current_user.papel != "admin":
+        raise HTTPException(status_code=403, detail="Apenas administradores podem limpar dados")
+    try:
+        tables = [models.User, models.Escola, models.Serie, models.Missao, models.MissaoConcluida, models.Transacao, models.ShopItem, models.UserItem]
+        for tbl in tables:
+            db.query(tbl).delete()
+        db.commit()
+        logger.info(f"Admin {current_user.email} limpou todas as tabelas")
+        return {"message": "Todos os dados foram apagados (estrutura mantida)"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error clearing data: {e}")
+        raise HTTPException(status_code=500, detail="Falha ao limpar dados")
+
 from fastapi import Form
 from fastapi.responses import Response
 import pandas as pd
