@@ -10,9 +10,6 @@ import { API_BASE_URL } from '../config/api';
 
 const apiClient: AxiosInstance = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
     timeout: 120000, // 120 seconds to handle Render cold starts
 });
 
