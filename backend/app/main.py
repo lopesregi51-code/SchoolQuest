@@ -1242,15 +1242,7 @@ async def import_users(file: UploadFile = File(...), db: Session = Depends(get_d
     
     return result
 
-@app.delete("/users/all")
-def delete_all_users(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    if current_user.papel != 'gestor':
-        raise HTTPException(status_code=403, detail="Apenas gestores podem deletar usuários")
-    
-    deleted = db.query(models.User).filter(models.User.papel == 'aluno', models.User.escola_id == current_user.escola_id).delete()
-    db.commit()
-    logger.warning(f"All students deleted by {current_user.nome}: {deleted} users")
-    return {"deleted": deleted}
+
 
 @app.put("/users/me/profile", response_model=schemas.UserResponse)
 def update_profile(bio: str = None, interesses: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
