@@ -119,6 +119,43 @@ async def shutdown_event():
     logger.info("Creating automatic backup on shutdown...")
     backup_manager.create_backup(prefix="shutdown")
 
+
+# Global Exception Handlers
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """Handler para HTTPException com logging."""
+    logger.warning(f"HTTP {exc.status_code}: {exc.detail} - Path: {request.url.path}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    """Handler para erros de validação."""
+    logger.error(f"Validation error: {exc.errors()} - Path: {request.url.path}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Dados inválidos", "errors": exc.errors()}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    """Handler global para exceções não tratadas."""
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno do servidor"}
+    )
+
+# Dependência
+def get_db():
+    db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 # Public endpoint to reinitialize database (useful after deployment issues)
 @app.post("/init-db")
 def init_database(db: Session = Depends(get_db)):
@@ -171,43 +208,6 @@ def init_database(db: Session = Depends(get_db)):
         logger.error(f"Error in init-db: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {str(e)}")
 
-
-
-# Global Exception Handlers
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
-    """Handler para HTTPException com logging."""
-    logger.warning(f"HTTP {exc.status_code}: {exc.detail} - Path: {request.url.path}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail}
-    )
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc: RequestValidationError):
-    """Handler para erros de validação."""
-    logger.error(f"Validation error: {exc.errors()} - Path: {request.url.path}")
-    return JSONResponse(
-        status_code=422,
-        content={"detail": "Dados inválidos", "errors": exc.errors()}
-    )
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc: Exception):
-    """Handler global para exceções não tratadas."""
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Erro interno do servidor"}
-    )
-
-# Dependência
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # WebSocket endpoint for real-time notifications
 @app.websocket("/ws/{user_id}")
