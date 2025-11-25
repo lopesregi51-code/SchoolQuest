@@ -229,34 +229,41 @@ def reset_database(
         from .db_backup import backup_manager
         import os
         
-        # 1. Criar backup de segurança ANTES de resetar
-        logger.warning(f"Admin {current_user.email} iniciou reset do banco de dados")
-        backup_path = backup_manager.create_backup(prefix="pre_reset")
-        
-        if not backup_path:
-            raise HTTPException(status_code=500, detail="Falha ao criar backup de segurança")
-        
-        # 2. Fechar todas as conexões
-        db.close()
-        database.engine.dispose()
-        
-        # 3. Deletar arquivo do banco
-        db_file = "schoolquest.db"
-        if os.path.exists(db_file):
-            os.remove(db_file)
-            logger.info(f"Database file {db_file} deleted")
-        
-        # Deletar arquivos WAL se existirem
-        for wal_file in [f"{db_file}-wal", f"{db_file}-shm"]:
-            if os.path.exists(wal_file):
-                os.remove(wal_file)
-                logger.info(f"WAL file {wal_file} deleted")
-        
-        # 4. Recriar tabelas
+        # 1. Tentar backup (apenas se for SQLite por enquanto)
+        backup_path = None
+        if "sqlite" in settings.database_url:
+            logger.warning(f"Admin {current_user.email} iniciou reset do banco de dados (SQLite)")
+            backup_path = backup_manager.create_backup(prefix="pre_reset")
+            
+            # Se for SQLite e falhar o backup, abortar por segurança
+            if not backup_path:
+                raise HTTPException(status_code=500, detail="Falha ao criar backup de segurança (SQLite)")
+            
+            # 2. Fechar conexões e deletar arquivo (Específico SQLite)
+            db.close()
+            database.engine.dispose()
+            
+            db_file = "schoolquest.db"
+            if os.path.exists(db_file):
+                os.remove(db_file)
+                logger.info(f"Database file {db_file} deleted")
+            
+            # Deletar arquivos WAL
+            for wal_file in [f"{db_file}-wal", f"{db_file}-shm"]:
+                if os.path.exists(wal_file):
+                    os.remove(wal_file)
+        else:
+            # PostgreSQL / Outros
+            logger.warning(f"Admin {current_user.email} iniciou reset do banco de dados (PostgreSQL)")
+            # Drop all tables
+            models.Base.metadata.drop_all(bind=database.engine)
+            logger.info("All tables dropped")
+
+        # 3. Recriar tabelas (Comum para ambos)
         models.Base.metadata.create_all(bind=database.engine)
         logger.info("Database tables recreated")
         
-        # 5. Recriar usuário admin padrão
+        # 4. Recriar usuário admin padrão
         new_db = database.SessionLocal()
         try:
             admin_user = models.User(
@@ -276,8 +283,8 @@ def reset_database(
         
         return {
             "message": "Banco de dados resetado com sucesso",
-            "backup_created": backup_path,
-            "warning": "Todos os dados foram apagados. Um backup foi salvo em: " + backup_path
+            "backup_created": backup_path if backup_path else "N/A (PostgreSQL)",
+            "warning": "Todos os dados foram apagados." + (f" Backup salvo em: {backup_path}" if backup_path else "")
         }
         
     except Exception as e:
