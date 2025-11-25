@@ -16,12 +16,17 @@ sqlite_connect_args = {
 engine_config = {
     "connect_args": sqlite_connect_args if "sqlite" in settings.database_url else {},
     "pool_pre_ping": True,  # Verifica conexões antes de usar
-    "pool_recycle": 3600,   # Recicla conexões a cada hora
+    "pool_recycle": 1800,   # Recicla conexões a cada 30 min (evita desconexão do Render)
 }
 
 # Se for SQLite, adiciona configurações específicas
 if "sqlite" in settings.database_url:
-    engine_config["poolclass"] = pool.StaticPool  # Melhor para SQLite em desenvolvimento
+    engine_config["poolclass"] = pool.StaticPool
+else:
+    # Configurações para PostgreSQL (Render)
+    engine_config["pool_size"] = 10      # Aumenta pool base (padrão é 5)
+    engine_config["max_overflow"] = 20   # Aumenta overflow (padrão é 10)
+    engine_config["pool_timeout"] = 30   # Timeout em segundos
 
 engine = create_engine(settings.database_url, **engine_config)
 
