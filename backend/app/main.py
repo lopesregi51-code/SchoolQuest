@@ -733,6 +733,122 @@ async def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_
         logger.error(f"Error uploading avatar: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao salvar imagem: {str(e)}")
 
+@app.post("/users/{user_id}/avatar", response_model=schemas.UserResponse)
+async def upload_user_avatar(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Upload avatar for a specific user - only owner or admin can upload."""
+    try:
+        from PIL import Image
+        import io as image_io
+        
+        # Check permissions: only owner or admin
+        if current_user.id != user_id and current_user.papel != 'admin':
+            raise HTTPException(status_code=403, detail="Você não tem permissão para alterar o avatar deste usuário")
+        
+        logger.info(f"Avatar upload started for user ID {user_id} by {current_user.email}, file: {file.filename}, content_type: {file.content_type}")
+        
+        # 1. Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail=f"Arquivo deve ser uma imagem. Tipo recebido: {file.content_type}")
+        
+        # 2. Validate file extension
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
+        file_extension = file.filename.split('.')[-1].lower() if file.filename and '.' in file.filename else None
+        
+        if not file_extension or file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Extensão não permitida. Use: {', '.join(allowed_extensions)}"
+            )
+        
+        # 3. Read and validate file size (5MB max for original)
+        contents = await file.read()
+        file_size = len(contents)
+        logger.info(f"Original file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
+        
+        if file_size > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Imagem deve ter no máximo 5MB")
+        
+        # 4. Open and resize image
+        try:
+            image = Image.open(image_io.BytesIO(contents))
+            
+            # Convert RGBA to RGB if needed (for JPEG compatibility)
+            if image.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'P':
+                    image = image.convert('RGBA')
+                background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+                image = background
+            
+            # Resize maintaining aspect ratio (max 800x800)
+            max_size = (800, 800)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+            logger.info(f"Image resized to: {image.size}")
+            
+            # Save to bytes with optimization
+            output = image_io.BytesIO()
+            save_format = 'JPEG' if file_extension in ['jpg', 'jpeg'] else file_extension.upper()
+            
+            if save_format == 'JPEG':
+                image.save(output, format=save_format, quality=85, optimize=True)
+            else:
+                image.save(output, format=save_format, optimize=True)
+            
+            optimized_contents = output.getvalue()
+            optimized_size = len(optimized_contents)
+            logger.info(f"Optimized file size: {optimized_size} bytes ({optimized_size / 1024 / 1024:.2f} MB)")
+            
+        except Exception as e:
+            logger.error(f"Error processing image: {e}")
+            raise HTTPException(status_code=400, detail=f"Erro ao processar imagem: {str(e)}")
+        
+        # 5. Create uploads directory
+        upload_dir = "uploads/avatars"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # 6. Generate unique filename
+        safe_filename = f"avatar_{user_id}_{int(datetime.now().timestamp())}.{file_extension}"
+        file_path = os.path.join(upload_dir, safe_filename)
+        
+        # 7. Get target user and delete old avatar file if exists
+        db_user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not db_user:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        
+        if db_user.avatar_url:
+            # Extract old file path from URL
+            old_file_path = db_user.avatar_url.lstrip('/')
+            if os.path.exists(old_file_path):
+                try:
+                    os.remove(old_file_path)
+                    logger.info(f"Old avatar deleted: {old_file_path}")
+                except Exception as e:
+                    logger.warning(f"Could not delete old avatar: {e}")
+        
+        # 8. Save optimized file
+        with open(file_path, 'wb') as f:
+            f.write(optimized_contents)
+        
+        logger.info(f"File saved successfully: {file_path}")
+        
+        # 9. Update user avatar URL
+        avatar_url = f"/{file_path.replace(os.sep, '/')}"
+        db_user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(db_user)
+        
+        logger.info(f"Avatar uploaded successfully for user {db_user.email}: {avatar_url}")
+        
+        # 10. Return properly formatted response
+        return db_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading avatar: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar imagem: {str(e)}")
+
+
 @app.get("/users/", response_model=list[schemas.UserResponse])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     query = db.query(models.User)
