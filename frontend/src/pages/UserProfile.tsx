@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
-import { User, Shield, BookOpen, Image, ArrowLeft, Trash2 } from 'lucide-react';
+import { User, Shield, BookOpen, Image, ArrowLeft, Trash2, Upload, Gift } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 
 interface UserProfileData {
@@ -17,6 +17,7 @@ interface UserProfileData {
     bio?: string;
     interesses?: string;
     avatar_url?: string;
+    streak_count?: number;
     escola_nome?: string;
     joined_at: string;
     clan?: {
@@ -51,6 +52,7 @@ export const UserProfile: React.FC = () => {
         bio: '',
         interesses: ''
     });
+    const [inventory, setInventory] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -60,6 +62,16 @@ export const UserProfile: React.FC = () => {
 
                 const response = await apiClient.get(`/users/${targetId}/profile`);
                 setProfile(response.data);
+
+                // Fetch inventory if viewing own profile
+                if (!id || targetId === currentUser?.id) {
+                    try {
+                        const inventoryResponse = await apiClient.get('/shop/purchases');
+                        setInventory(inventoryResponse.data);
+                    } catch (error) {
+                        console.error('Erro ao carregar inventário', error);
+                    }
+                }
             } catch (error) {
                 console.error('Erro ao carregar perfil', error);
                 alert('Erro ao carregar perfil');
@@ -122,6 +134,34 @@ export const UserProfile: React.FC = () => {
         }
     };
 
+    const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 5MB');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const targetId = id || currentUser?.id;
+            const response = await apiClient.post(`/users/${targetId}/avatar`, formData);
+            setProfile({ ...profile!, avatar_url: response.data.avatar_url });
+            alert('Foto atualizada!');
+        } catch (error: any) {
+            console.error('Erro ao fazer upload:', error);
+            alert(error.response?.data?.detail || 'Erro ao fazer upload da imagem');
+        }
+    };
+
     if (isLoading) return <div className="p-8 text-center text-white">Carregando perfil...</div>;
     if (!profile) return <div className="p-8 text-center text-white">Usuário não encontrado.</div>;
 
@@ -146,16 +186,30 @@ export const UserProfile: React.FC = () => {
                     <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-600 to-purple-600 opacity-20"></div>
 
                     <div className="relative flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-32 h-32 rounded-full border-4 border-gray-800 shadow-xl overflow-hidden bg-gray-700 flex items-center justify-center">
-                            {profile.avatar_url ? (
-                                <img
-                                    src={profile.avatar_url.startsWith('http') ? profile.avatar_url : `${API_BASE_URL}${profile.avatar_url}`}
-                                    alt={profile.nome}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <User className="w-12 h-12 text-gray-400" />
-                            )}
+                        <div className="relative group">
+                            <div className="w-32 h-32 rounded-full border-4 border-gray-800 shadow-xl overflow-hidden bg-gray-700 flex items-center justify-center">
+                                {profile.avatar_url ? (
+                                    <img
+                                        src={profile.avatar_url.startsWith('http') ? profile.avatar_url : `${API_BASE_URL}${profile.avatar_url}`}
+                                        alt={profile.nome}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <User className="w-12 h-12 text-gray-400" />
+                                )}
+                                {/* Upload Button - Only for owner */}
+                                {isOwner && (
+                                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                        <Upload className="w-6 h-6 text-white" />
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handlePhotoUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                )}
+                            </div>
                         </div>
 
                         <div className="flex-1 text-center md:text-left">
@@ -253,6 +307,73 @@ export const UserProfile: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Stats Grid - Only for owner */}
+                {isOwner && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+                            <div className="text-yellow-400 font-bold text-2xl">{profile.moedas}</div>
+                            <div className="text-gray-400 text-sm">Moedas</div>
+                        </div>
+                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+                            <div className="text-blue-400 font-bold text-2xl">{profile.xp}</div>
+                            <div className="text-gray-400 text-sm">XP Total</div>
+                        </div>
+                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+                            <div className="text-orange-500 font-bold text-2xl flex items-center justify-center gap-1">
+                                <span className="text-2xl">🔥</span> {profile.streak_count || 0}
+                            </div>
+                            <div className="text-gray-400 text-sm">Dias Seguidos</div>
+                        </div>
+                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+                            <div className="text-purple-400 font-bold text-2xl">{inventory.length}</div>
+                            <div className="text-gray-400 text-sm">Itens</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Inventory - Only for owner */}
+                {isOwner && (
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <Gift className="w-5 h-5 text-purple-400" />
+                            Inventário
+                        </h2>
+
+                        {inventory.length === 0 ? (
+                            <p className="text-gray-400">Nenhum item ainda. Complete missões para ganhar moedas e compre itens na lojinha!</p>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {inventory.map((purchase) => (
+                                    <div
+                                        key={purchase.id}
+                                        className="relative bg-gray-700 p-4 rounded-xl border-2 border-purple-500 flex flex-col items-center text-center transition-transform hover:scale-105"
+                                    >
+                                        <div className="absolute top-2 right-2">
+                                            <span className={`text-xs px-2 py-1 rounded ${purchase.status === 'entregue' ? 'bg-green-900 text-green-200' :
+                                                purchase.status === 'pendente' ? 'bg-yellow-900 text-yellow-200' :
+                                                    'bg-red-900 text-red-200'
+                                                }`}>
+                                                {purchase.status}
+                                            </span>
+                                        </div>
+                                        <div className="w-16 h-16 mb-3 bg-gray-800 rounded-full flex items-center justify-center overflow-hidden">
+                                            {purchase.reward_imagem_url ? (
+                                                <img src={purchase.reward_imagem_url} alt={purchase.reward_nome} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Gift className="w-8 h-8 text-gray-500" />
+                                            )}
+                                        </div>
+                                        <h3 className="font-bold text-sm mb-1">{purchase.reward_nome}</h3>
+                                        <p className="text-xs text-gray-400 mb-2">{purchase.reward_descricao}</p>
+                                        <p className="text-xs text-yellow-400 font-bold">{purchase.custo_pago} Moedas</p>
+                                        <p className="text-xs text-gray-500 mt-1">{purchase.data_compra}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Recent Activity Grid */}
                 <div className="grid md:grid-cols-2 gap-8">
