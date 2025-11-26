@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Plus, LogOut, CheckCircle, XCircle, Clock, QrCode, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, LogOut, CheckCircle, QrCode, Trash2 } from 'lucide-react';
 import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { Html5Qrcode } from 'html5-qrcode';
 
-interface PendingMission {
-    id: number;
-    aluno_nome: string;
-    aluno_serie?: string;
-    missao_titulo: string;
-    data_solicitacao: string;
-}
+
 
 export const ProfessorPanel: React.FC = () => {
     const { user, logout } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
-    const [pendingMissions, setPendingMissions] = useState<PendingMission[]>([]);
+
     const [myMissions, setMyMissions] = useState<any[]>([]);
-    const [assignedMissions, setAssignedMissions] = useState<any[]>([]);
+
     const [completedMissions, setCompletedMissions] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         titulo: '',
@@ -29,23 +23,7 @@ export const ProfessorPanel: React.FC = () => {
     });
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-    const fetchPendingMissions = async () => {
-        try {
-            const response = await apiClient.get('/missoes/submetidas');
-            setPendingMissions(response.data);
-        } catch (error) {
-            console.error('Erro ao buscar missões pendentes', error);
-        }
-    };
 
-    const fetchAssignedMissions = async () => {
-        try {
-            const response = await apiClient.get('/missoes/professor/atribuidas');
-            setAssignedMissions(response.data);
-        } catch (error) {
-            console.error('Erro ao buscar missões atribuídas', error);
-        }
-    };
 
     const fetchCompletedMissions = async () => {
         try {
@@ -80,22 +58,13 @@ export const ProfessorPanel: React.FC = () => {
                 aluno_id: student.id
             });
             alert(`Missão atribuída para ${student.nome}!`);
-            fetchAssignedMissions();
+            alert(`Missão atribuída para ${student.nome}!`);
         } catch (error: any) {
             alert(error.response?.data?.detail || 'Erro ao atribuir missão');
         }
     };
 
-    const validateMission = async (id: number, aprovado: boolean) => {
-        try {
-            await apiClient.post(`/missoes/validar/${id}?aprovado=${aprovado}`);
-            alert(aprovado ? 'Missão aprovada!' : 'Missão rejeitada!');
-            fetchPendingMissions();
-            fetchCompletedMissions();
-        } catch (error) {
-            alert('Erro ao validar missão');
-        }
-    };
+
 
     const fetchMyMissions = async () => {
         try {
@@ -194,9 +163,9 @@ export const ProfessorPanel: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchPendingMissions();
+
         fetchMyMissions();
-        fetchAssignedMissions();
+
         fetchCompletedMissions();
 
         // Cleanup scanner on unmount
@@ -388,37 +357,7 @@ export const ProfessorPanel: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Assigned Missions (Pending) */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold flex items-center gap-2">
-                                <Clock className="w-6 h-6 text-orange-400" />
-                                Atribuições Pendentes
-                            </h2>
-                        </div>
-                        {assignedMissions.length === 0 ? (
-                            <p className="text-gray-400">Nenhuma missão atribuída pendente.</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {assignedMissions.map((assignment) => (
-                                    <div key={assignment.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <h3 className="font-bold text-lg">{assignment.missao?.titulo || 'Missão'}</h3>
-                                                <p className="text-sm text-gray-300">Aluno: {assignment.aluno_nome}</p>
-                                                <p className="text-xs text-gray-400">
-                                                    Atribuído em: {new Date(assignment.data_atribuicao).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs font-bold uppercase">
-                                                {assignment.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+
 
                     {/* Completed Missions */}
                     <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
@@ -529,57 +468,7 @@ export const ProfessorPanel: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Pending Validations */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold flex items-center gap-2">
-                                <Clock className="w-6 h-6 text-yellow-400" />
-                                Missões Pendentes
-                            </h2>
-                            {pendingMissions.length > 0 && (
-                                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
-                                    {pendingMissions.length} pendentes
-                                </span>
-                            )}
-                        </div>
 
-                        {pendingMissions.length === 0 ? (
-                            <p className="text-gray-400">Nenhuma missão aguardando validação.</p>
-                        ) : (
-                            <div className="space-y-4">
-                                {pendingMissions.map((mission) => (
-                                    <div key={mission.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-bold text-lg">{mission.missao_titulo}</h3>
-                                                <p className="text-sm text-gray-300">
-                                                    Aluno: {mission.aluno_nome}
-                                                    {mission.aluno_serie && <span className="text-gray-400"> ({mission.aluno_serie})</span>}
-                                                </p>
-                                                <p className="text-xs text-gray-400">
-                                                    {new Date(mission.data_solicitacao).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 mt-3">
-                                            <button
-                                                onClick={() => validateMission(mission.id, true)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-semibold transition-colors"
-                                            >
-                                                <CheckCircle className="w-4 h-4" /> Aprovar
-                                            </button>
-                                            <button
-                                                onClick={() => validateMission(mission.id, false)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold transition-colors"
-                                            >
-                                                <XCircle className="w-4 h-4" /> Rejeitar
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 {/* Sidebar */}
