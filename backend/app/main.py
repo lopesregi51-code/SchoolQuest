@@ -908,6 +908,37 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     logger.info(f"User deleted: {db_user.email} by {current_user.email}")
     return {"message": "Usuário deletado com sucesso"}
 
+
+@app.get("/missoes/", response_model=list[schemas.MissaoResponse])
+def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar todas as missões disponíveis."""
+    if current_user.papel == 'aluno':
+        # Students see missions from their school and clan missions from their clan
+        missoes = db.query(models.Missao).filter(
+            models.Missao.criador_id.in_(
+                db.query(models.User.id).filter(models.User.escola_id == current_user.escola_id)
+            )
+        ).all()
+        
+        # Add clan missions if student is in a clan
+        clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == current_user.id).first()
+        if clan_member:
+            clan_missions = db.query(models.Missao).filter(
+                models.Missao.tipo == 'clan',
+                models.Missao.clan_id == clan_member.clan_id
+            ).all()
+            missoes.extend(clan_missions)
+        
+        return missoes
+    else:
+        # Professors and managers see all missions from their school
+        missoes = db.query(models.Missao).filter(
+            models.Missao.criador_id.in_(
+                db.query(models.User.id).filter(models.User.escola_id == current_user.escola_id)
+            )
+        ).all()
+        return missoes
+
 @app.post("/missoes/", response_model=schemas.MissaoResponse)
 def create_missao(missao: schemas.MissaoCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Criar nova missão."""
@@ -999,14 +1030,37 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
             
         logger.info(f"Mission approved: {missao.titulo} for {aluno.nome}")
     else:
-        # Se rejeitado, remover a submissão para permitir nova tentativa
-        logger.info(f"Mission rejected: {submissao.missao.titulo} for {submissao.aluno.nome}")
-        db.delete(submissao)
-        db.commit()
-        return {"message": "Missão rejeitada e removida para nova tentativa"}
-
+        logger.info(f"Mission rejected: {missao.titulo} for {aluno.nome}")
+        
     db.commit()
     return {"message": "Missão validada com sucesso!"}
+
+@app.get("/missoes/professor/concluidas")
+def read_professor_completed_missions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar missões concluídas e validadas criadas pelo professor."""
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem acessar esta rota")
+    
+    # Get completed missions for missions created by this professor
+    completed = db.query(models.MissaoConcluida).join(models.Missao).filter(
+        models.Missao.criador_id == current_user.id,
+        models.MissaoConcluida.validada == True
+    ).all()
+    
+    resultado = []
+    for conclusao in completed:
+        resultado.append({
+            "id": conclusao.id,
+            "missao_id": conclusao.missao_id,
+            "missao_titulo": conclusao.missao.titulo,
+            "aluno_id": conclusao.aluno_id,
+            "aluno_nome": conclusao.aluno.nome,
+            "data_conclusao": conclusao.data_validacao,
+            "validada": conclusao.validada
+        })
+    
+    return resultado
+
 
 
 class ValidacaoPresencialRequest(BaseModel):
