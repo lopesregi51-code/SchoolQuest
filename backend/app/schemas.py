@@ -64,6 +64,7 @@ class UserResponse(UserBase):
     interesses: Optional[str] = None
     escola_nome: Optional[str] = None
     serie_nome: Optional[str] = None
+    qr_token: Optional[str] = None
     
     class Config:
         orm_mode = True
@@ -74,6 +75,8 @@ class MissaoBase(BaseModel):
     pontos: int
     moedas: int
     categoria: str
+    tipo: str = 'individual'
+    clan_id: Optional[int] = None
 
 class MissaoCreate(MissaoBase):
     turma_id: Optional[int] = None
@@ -82,6 +85,8 @@ class MissaoResponse(MissaoBase):
     id: int
     criador_id: int
     status: Optional[str] = "disponivel"
+    tipo: str
+    clan_id: Optional[int] = None
     criado_em: datetime
     
     class Config:
@@ -164,6 +169,7 @@ class ClanResponse(ClanBase):
     lider_id: int
     escola_id: int
     criado_em: datetime
+    moedas: int = 0
     
     class Config:
         orm_mode = True
@@ -187,6 +193,11 @@ class ClanInviteResponse(BaseModel):
     
     class Config:
         orm_mode = True
+
+class ClanMissionProgressResponse(BaseModel):
+    mission: MissaoResponse
+    completed_by: List[ClanMemberResponse]
+    pending_by: List[ClanMemberResponse]
 
 # --- Mural Schemas ---
 

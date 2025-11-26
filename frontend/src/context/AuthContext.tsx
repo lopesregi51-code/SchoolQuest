@@ -17,6 +17,7 @@ interface User {
     interesses?: string;
     streak_count?: number;
     avatar_url?: string;
+    qr_token?: string;
 }
 
 interface AuthContextType {

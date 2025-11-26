@@ -443,6 +443,9 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
     if current_user.papel == 'gestor':
         escola_id_to_use = current_user.escola_id
 
+    import uuid
+    qr_token = str(uuid.uuid4())
+
     db_user = models.User(
         email=user.email, 
         nome=user.nome, 
@@ -450,7 +453,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
         papel=user.papel,
         serie_id=user.serie_id,
         disciplina=user.disciplina,
-        escola_id=escola_id_to_use
+        escola_id=escola_id_to_use,
+        qr_token=qr_token
     )
     db.add(db_user)
     db.commit()
@@ -485,8 +489,17 @@ def delete_escola(escola_id: int, db: Session = Depends(get_db), current_user: m
         raise HTTPException(status_code=404, detail="Escola não encontrada")
         
     db.delete(escola)
+    db.delete(escola)
     db.commit()
     return {"message": "Escola excluída com sucesso"}
+
+@app.get("/clans/", response_model=list[schemas.ClanResponse])
+def read_clans(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar clãs da escola do usuário."""
+    if not current_user.escola_id:
+        return []
+        
+    return db.query(models.Clan).filter(models.Clan.escola_id == current_user.escola_id).all()
 
 # Series Management Endpoints
 @app.get("/series/", response_model=list[schemas.SerieResponse])
@@ -914,209 +927,6 @@ def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: m
     
     if current_user.papel != 'admin' and current_user.papel != 'gestor' and missao.criador_id != current_user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para excluir esta missão")
-        
-    db.delete(missao)
-    db.commit()
-    return {"message": "Missão excluída com sucesso"}
-
-@app.post("/missoes/atribuir", response_model=schemas.MissaoAtribuidaResponse)
-def atribuir_missao(
-    atribuicao: schemas.MissaoAtribuidaCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    if current_user.papel not in ['professor', 'gestor']:
-        raise HTTPException(status_code=403, detail="Apenas professores podem atribuir missões")
-    
-    missao = db.query(models.Missao).filter(models.Missao.id == atribuicao.missao_id).first()
-    if not missao:
-        raise HTTPException(status_code=404, detail="Missão não encontrada")
-    
-    if missao.criador_id != current_user.id and current_user.papel != 'gestor':
-        raise HTTPException(status_code=403, detail="Você só pode atribuir suas próprias missões")
-
-    # Check if already assigned
-    existing = db.query(models.MissaoAtribuida).filter(
-        models.MissaoAtribuida.missao_id == atribuicao.missao_id,
-        models.MissaoAtribuida.aluno_id == atribuicao.aluno_id
-    ).first()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Missão já atribuída a este aluno")
-
-    db_atribuicao = models.MissaoAtribuida(
-        missao_id=atribuicao.missao_id,
-        aluno_id=atribuicao.aluno_id,
-        status="pendente"
-    )
-    db.add(db_atribuicao)
-    db.commit()
-    db.refresh(db_atribuicao)
-    
-    # Manually populate for response
-    db_atribuicao.aluno_nome = db_atribuicao.aluno.nome
-    
-    return db_atribuicao
-
-@app.get("/missoes/recebidas", response_model=List[schemas.MissaoAtribuidaResponse])
-def get_missoes_recebidas(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    missoes = db.query(models.MissaoAtribuida).filter(
-        models.MissaoAtribuida.aluno_id == current_user.id,
-        models.MissaoAtribuida.status == "pendente"
-    ).all()
-    
-    for m in missoes:
-        m.aluno_nome = current_user.nome
-        
-    return missoes
-
-@app.post("/missoes/atribuidas/{id}/aceitar")
-def aceitar_missao(
-    id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    atribuicao = db.query(models.MissaoAtribuida).filter(models.MissaoAtribuida.id == id).first()
-    if not atribuicao:
-        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
-    
-    if atribuicao.aluno_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Não autorizado")
-        
-    atribuicao.status = "aceita"
-    atribuicao.data_resposta = datetime.utcnow()
-    db.commit()
-    return {"message": "Missão aceita"}
-
-@app.post("/missoes/atribuidas/{id}/recusar")
-def recusar_missao(
-    id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    atribuicao = db.query(models.MissaoAtribuida).filter(models.MissaoAtribuida.id == id).first()
-    if not atribuicao:
-        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
-    
-    if atribuicao.aluno_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Não autorizado")
-        
-    atribuicao.status = "recusada"
-    atribuicao.data_resposta = datetime.utcnow()
-    db.commit()
-    return {"message": "Missão recusada"}
-
-@app.delete("/users/all")
-def delete_all_users(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """Delete all students in the gestor's school (gestor only)."""
-    if current_user.papel != 'gestor':
-        raise HTTPException(status_code=403, detail="Apenas gestores podem deletar todos os alunos")
-    
-    if not current_user.escola_id:
-        raise HTTPException(status_code=400, detail="Gestor não está vinculado a uma escola")
-    
-    # Delete only students from the same school
-    deleted_count = db.query(models.User).filter(
-        models.User.papel == 'aluno',
-        models.User.escola_id == current_user.escola_id
-    ).delete()
-    
-    db.commit()
-    return {"deleted": deleted_count, "message": f"{deleted_count} alunos deletados com sucesso"}
-
-
-@app.get("/missoes/professor/atribuidas", response_model=List[schemas.MissaoAtribuidaResponse])
-def get_professor_atribuidas(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    if current_user.papel not in ['professor', 'gestor']:
-        raise HTTPException(status_code=403, detail="Apenas professores podem ver atribuições")
-
-    results = db.query(models.MissaoAtribuida).join(models.Missao).filter(
-        models.Missao.criador_id == current_user.id
-    ).all()
-    
-    for res in results:
-        res.aluno_nome = res.aluno.nome if res.aluno else "Desconhecido"
-        
-    return results
-
-@app.get("/missoes/professor/concluidas")
-def get_professor_concluidas(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    if current_user.papel not in ['professor', 'gestor']:
-        raise HTTPException(status_code=403, detail="Apenas professores podem ver missões concluídas")
-
-    conclusoes = db.query(models.MissaoConcluida).join(models.Missao).filter(
-        models.Missao.criador_id == current_user.id,
-        models.MissaoConcluida.validada == True
-    ).all()
-    
-    resultado = []
-    for sub in conclusoes:
-        resultado.append({
-            "id": sub.id,
-            "aluno_nome": sub.aluno.nome,
-            "aluno_serie": sub.aluno.serie_nome,
-            "missao_titulo": sub.missao.titulo,
-            "data_solicitacao": sub.data_solicitacao,
-            "data_validacao": sub.data_validacao
-        })
-    return resultado
-
-@app.get("/missoes/", response_model=list[schemas.MissaoResponse])
-def read_missoes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    query = db.query(models.Missao).join(models.User, models.Missao.criador_id == models.User.id)
-    
-    if current_user.escola_id:
-        query = query.filter(models.User.escola_id == current_user.escola_id)
-        
-    missoes = query.offset(skip).limit(limit).all()
-    
-    # Calcular status para o usuário atual
-    resultado = []
-    for missao in missoes:
-        status_missao = "disponivel"
-        conclusao = db.query(models.MissaoConcluida).filter_by(
-            missao_id=missao.id, 
-            aluno_id=current_user.id
-        ).first()
-        
-        if conclusao:
-            if conclusao.validada:
-                status_missao = "aprovada"
-            else:
-                status_missao = "pendente"
-        
-        missao_resp = schemas.MissaoResponse(
-            **missao.__dict__,
-            status=status_missao
-        )
-        resultado.append(missao_resp)
-        
-    return resultado
-
-@app.post("/missoes/{missao_id}/concluir")
-def concluir_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Completar missão."""
-    # Verificar se missão existe
-    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
-    if not missao:
-        raise HTTPException(status_code=404, detail="Missão não encontrada")
-    
-    # Verificar se já concluiu
-    existente = db.query(models.MissaoConcluida).filter_by(missao_id=missao_id, aluno_id=current_user.id).first()
-    if existente:
-        raise HTTPException(status_code=400, detail="Missão já enviada para validação")
     
     conclusao = models.MissaoConcluida(missao_id=missao_id, aluno_id=current_user.id)
     db.add(conclusao)
@@ -1200,7 +1010,8 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
 
 
 class ValidacaoPresencialRequest(BaseModel):
-    aluno_id: int
+    aluno_id: Optional[int] = None
+    qr_token: Optional[str] = None
 
 @app.post("/missoes/{missao_id}/validar_presencial")
 def validar_missao_presencial(
@@ -1209,7 +1020,7 @@ def validar_missao_presencial(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Valida uma missão presencialmente para um aluno específico (via QR Code)."""
+    """Valida uma missão presencialmente para um aluno específico (via QR Code ou ID)."""
     # Verificar permissões (professor criador ou admin/gestor)
     missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
     if not missao:
@@ -1221,15 +1032,20 @@ def validar_missao_presencial(
     if current_user.papel == 'aluno':
         raise HTTPException(status_code=403, detail="Alunos não podem validar missões")
 
-    # Verificar se aluno existe
-    aluno = db.query(models.User).filter(models.User.id == request.aluno_id).first()
+    # Buscar aluno
+    aluno = None
+    if request.qr_token:
+        aluno = db.query(models.User).filter(models.User.qr_token == request.qr_token).first()
+    elif request.aluno_id:
+        aluno = db.query(models.User).filter(models.User.id == request.aluno_id).first()
+        
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
 
     # Verificar se já completou
     conclusao = db.query(models.MissaoConcluida).filter(
         models.MissaoConcluida.missao_id == missao_id,
-        models.MissaoConcluida.aluno_id == request.aluno_id
+        models.MissaoConcluida.aluno_id == aluno.id
     ).first()
     
     if conclusao:
@@ -1239,10 +1055,18 @@ def validar_missao_presencial(
             # Já enviou mas não validou -> Validar agora
             conclusao.validada = True
             conclusao.data_validacao = datetime.utcnow()
+            conclusao.validada_por = current_user.id
             
             # Dar recompensas
-            aluno.xp += missao.pontos
-            aluno.moedas += missao.moedas
+            if missao.tipo == 'clan':
+                clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == aluno.id).first()
+                if clan_member:
+                    clan_member.clan.moedas += missao.moedas
+            else:
+                aluno.xp += missao.pontos
+                aluno.moedas += missao.moedas
+                if aluno.xp >= aluno.nivel * 1000:
+                    aluno.nivel += 1
             
             db.commit()
             return {"message": "Missão validada com sucesso!", "status": "validated", "aluno": aluno.nome}
@@ -1250,17 +1074,28 @@ def validar_missao_presencial(
     # Criar nova conclusão validada
     nova_conclusao = models.MissaoConcluida(
         missao_id=missao_id,
-        aluno_id=request.aluno_id,
+        aluno_id=aluno.id,
         data_solicitacao=datetime.utcnow(),
         validada=True,
-        data_validacao=datetime.utcnow(),
-        foto_url=None # Presencial não precisa de foto
+        validada_por=current_user.id,
+        data_validacao=datetime.utcnow()
     )
     db.add(nova_conclusao)
     
     # Dar recompensas
-    aluno.xp += missao.pontos
-    aluno.moedas += missao.moedas
+    if missao.tipo == 'clan':
+        clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == aluno.id).first()
+        if clan_member:
+            clan_member.clan.moedas += missao.moedas
+        else:
+             # Se for missão de clã mas aluno não tem clã, talvez dar erro ou ignorar?
+             # Por enquanto ignoramos a recompensa do clã
+             pass
+    else:
+        aluno.xp += missao.pontos
+        aluno.moedas += missao.moedas
+        if aluno.xp >= aluno.nivel * 1000:
+            aluno.nivel += 1
     
     db.commit()
     
@@ -1555,6 +1390,77 @@ def get_clan_members(clan_id: int, db: Session = Depends(get_db), current_user: 
             user_avatar=m.user.avatar_url
         ) for m in members
     ]
+
+@app.get("/clans/{clan_id}/missoes", response_model=list[schemas.MissaoResponse])
+def get_clan_missions(clan_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Verificar se usuário é membro do clã
+    membership = db.query(models.ClanMember).filter(
+        models.ClanMember.clan_id == clan_id,
+        models.ClanMember.user_id == current_user.id
+    ).first()
+    
+    if not membership:
+        raise HTTPException(status_code=403, detail="Você não é membro deste clã")
+
+    missoes = db.query(models.Missao).filter(
+        models.Missao.tipo == 'clan',
+        models.Missao.clan_id == clan_id
+    ).all()
+    
+    return missoes
+
+@app.get("/clans/{clan_id}/missoes/progress", response_model=list[schemas.ClanMissionProgressResponse])
+def get_clan_missions_progress(clan_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Verificar se usuário é líder do clã
+    membership = db.query(models.ClanMember).filter(
+        models.ClanMember.clan_id == clan_id,
+        models.ClanMember.user_id == current_user.id
+    ).first()
+    
+    if not membership or membership.papel != 'lider':
+        raise HTTPException(status_code=403, detail="Apenas o líder pode ver o progresso das missões")
+
+    # Buscar missões do clã
+    missoes = db.query(models.Missao).filter(
+        models.Missao.tipo == 'clan',
+        models.Missao.clan_id == clan_id
+    ).all()
+    
+    # Buscar membros do clã
+    members = db.query(models.ClanMember).filter(models.ClanMember.clan_id == clan_id).all()
+    
+    result = []
+    for missao in missoes:
+        completed = []
+        pending = []
+        
+        # Buscar conclusões validadas para esta missão
+        conclusoes = db.query(models.MissaoConcluida).filter(
+            models.MissaoConcluida.missao_id == missao.id,
+            models.MissaoConcluida.validada == True
+        ).all()
+        completed_ids = [c.aluno_id for c in conclusoes]
+        
+        for member in members:
+            member_response = schemas.ClanMemberResponse(
+                id=member.id,
+                user_id=member.user_id,
+                user_nome=member.user.nome,
+                papel=member.papel,
+                user_avatar=member.user.avatar_url
+            )
+            if member.user_id in completed_ids:
+                completed.append(member_response)
+            else:
+                pending.append(member_response)
+                
+        result.append({
+            "mission": missao,
+            "completed_by": completed,
+            "pending_by": pending
+        })
+        
+    return result
 
 @app.post("/clans/invite")
 def invite_to_clan(email: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

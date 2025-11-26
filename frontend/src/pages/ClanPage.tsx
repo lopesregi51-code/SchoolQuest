@@ -31,6 +31,7 @@ export const ClanPage: React.FC = () => {
     const { user } = useAuth();
     const [clan, setClan] = useState<Clan | null>(null);
     const [members, setMembers] = useState<ClanMember[]>([]);
+    const [clanMissions, setClanMissions] = useState<any[]>([]);
     const [invites, setInvites] = useState<ClanInvite[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -41,6 +42,8 @@ export const ClanPage: React.FC = () => {
     const [suggestions, setSuggestions] = useState<Clan[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
+
+    const [missionProgress, setMissionProgress] = useState<any[]>([]);
 
     useEffect(() => {
         fetchClanData();
@@ -60,20 +63,25 @@ export const ClanPage: React.FC = () => {
     const fetchClanData = async () => {
         try {
             setLoading(true);
-            // Check if user has a clan
             const clanRes = await apiClient.get('/clans/me');
 
             if (clanRes.data) {
                 setClan(clanRes.data);
-                // Fetch members
                 const membersRes = await apiClient.get(`/clans/${clanRes.data.id}/members`);
                 setMembers(membersRes.data);
+
+                const missionsRes = await apiClient.get(`/clans/${clanRes.data.id}/missoes`);
+                setClanMissions(missionsRes.data);
+
+                // If leader, fetch progress
+                if (clanRes.data.lider_id === user?.id) {
+                    const progressRes = await apiClient.get(`/clans/${clanRes.data.id}/missoes/progress`);
+                    setMissionProgress(progressRes.data);
+                }
             } else {
                 setClan(null);
-                // Fetch invites
                 const invitesRes = await apiClient.get('/clans/invites/my');
                 setInvites(invitesRes.data);
-                // Fetch suggestions
                 const suggestionsRes = await apiClient.get('/clans/suggestions');
                 setSuggestions(suggestionsRes.data);
             }
@@ -158,70 +166,74 @@ export const ClanPage: React.FC = () => {
     if (loading) return <div className="p-8 text-white">Carregando...</div>;
 
     return (
-        <div className="min-h-screen bg-dark text-white p-6">
-            <div className="max-w-4xl mx-auto">
-                <header className="mb-8 flex items-center gap-3">
-                    <Shield className="w-10 h-10 text-primary" />
-                    <h1 className="text-3xl font-bold">Sistema de Clãs</h1>
-                </header>
-
+        <div className="min-h-screen bg-[#121214] text-gray-100 p-6 font-sans">
+            <div className="max-w-5xl mx-auto">
                 {!clan ? (
-                    <div className="space-y-8">
-                        <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-12">
+                        <header className="text-center mb-12">
+                            <h1 className="text-4xl font-light tracking-tight text-white mb-2">Sistema de Clãs</h1>
+                            <p className="text-gray-400">Junte-se a um clã ou crie o seu próprio legado.</p>
+                        </header>
+
+                        <div className="grid md:grid-cols-2 gap-12">
                             {/* Create Clan */}
-                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <UserPlus className="w-6 h-6 text-green-400" />
+                            <div className="bg-[#202024] p-8 rounded-2xl border border-gray-800 shadow-lg">
+                                <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-white">
+                                    <UserPlus className="w-6 h-6 text-emerald-500" />
                                     Criar Novo Clã
                                 </h2>
-                                <form onSubmit={handleCreateClan} className="space-y-4">
+                                <form onSubmit={handleCreateClan} className="space-y-5">
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Nome do Clã</label>
+                                        <label className="block text-sm text-gray-400 mb-2">Nome do Clã</label>
                                         <input
                                             type="text"
                                             value={newClanName}
                                             onChange={e => setNewClanName(e.target.value)}
-                                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                            className="w-full bg-[#121214] border border-gray-700 rounded-lg p-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all outline-none"
+                                            placeholder="Ex: Os Guardiões"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Lema / Descrição</label>
+                                        <label className="block text-sm text-gray-400 mb-2">Lema / Descrição</label>
                                         <input
                                             type="text"
                                             value={newClanDesc}
                                             onChange={e => setNewClanDesc(e.target.value)}
-                                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                            className="w-full bg-[#121214] border border-gray-700 rounded-lg p-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all outline-none"
+                                            placeholder="Ex: Sabedoria e Coragem"
                                             required
                                         />
                                     </div>
-                                    <button type="submit" className="w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg font-bold">
+                                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-900/20">
                                         Fundar Clã
                                     </button>
                                 </form>
                             </div>
 
                             {/* Invites */}
-                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <Mail className="w-6 h-6 text-blue-400" />
-                                    Convites Recebidos
+                            <div className="bg-[#202024] p-8 rounded-2xl border border-gray-800 shadow-lg">
+                                <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-white">
+                                    <Mail className="w-6 h-6 text-blue-500" />
+                                    Convites
                                 </h2>
                                 {invites.length === 0 ? (
-                                    <p className="text-gray-400">Nenhum convite pendente.</p>
+                                    <div className="text-center py-12 text-gray-500 bg-[#121214] rounded-xl border border-gray-800 border-dashed">
+                                        Nenhum convite pendente
+                                    </div>
                                 ) : (
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
                                         {invites.map(invite => (
-                                            <div key={invite.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+                                            <div key={invite.id} className="bg-[#121214] p-4 rounded-xl border border-gray-800 flex justify-between items-center group hover:border-gray-700 transition-colors">
                                                 <div>
-                                                    <p className="font-bold">{invite.clan_nome}</p>
-                                                    <p className="text-xs text-gray-400">Convite para se juntar</p>
+                                                    <p className="font-medium text-white group-hover:text-blue-400 transition-colors">{invite.clan_nome}</p>
+                                                    <p className="text-xs text-gray-500">Convite para se juntar</p>
                                                 </div>
                                                 <button
                                                     onClick={() => handleAcceptInvite(invite.id)}
-                                                    className="bg-blue-600 hover:bg-blue-500 p-2 rounded-full"
+                                                    className="bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white p-2 rounded-full transition-all"
                                                 >
-                                                    <Check className="w-4 h-4" />
+                                                    <Check className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         ))}
@@ -232,16 +244,16 @@ export const ClanPage: React.FC = () => {
 
                         {/* Suggestions */}
                         {suggestions.length > 0 && (
-                            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <Users className="w-6 h-6 text-purple-400" />
+                            <div className="mt-12">
+                                <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-white">
+                                    <Users className="w-6 h-6 text-purple-500" />
                                     Sugestões de Clãs
                                 </h2>
-                                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
                                     {suggestions.map(s => (
-                                        <div key={s.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                                            <h3 className="font-bold text-lg">{s.nome}</h3>
-                                            <p className="text-sm text-gray-400 italic mb-2">"{s.descricao}"</p>
+                                        <div key={s.id} className="bg-[#202024] p-6 rounded-xl border border-gray-800 hover:border-purple-500/30 transition-all group">
+                                            <h3 className="font-medium text-lg text-white group-hover:text-purple-400 transition-colors">{s.nome}</h3>
+                                            <p className="text-sm text-gray-400 italic mb-4">"{s.descricao}"</p>
                                             <p className="text-xs text-gray-500">Peça um convite ao líder!</p>
                                         </div>
                                     ))}
@@ -250,106 +262,207 @@ export const ClanPage: React.FC = () => {
                         )}
                     </div>
                 ) : (
-                    <div className="space-y-6">
-                        {/* Clan Header */}
-                        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 text-center relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary"></div>
-                            <h2 className="text-4xl font-bold mb-2">{clan.nome}</h2>
-                            <p className="text-gray-400 italic">"{clan.descricao}"</p>
-
-                            <div className="mt-6 flex justify-center gap-4">
-                                <button
-                                    onClick={handleLeaveClan}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-900/50 text-red-200 rounded-lg hover:bg-red-900 transition-colors"
-                                >
-                                    <LogOut className="w-4 h-4" /> Sair do Clã
-                                </button>
-                                {(user?.papel === 'admin' || user?.papel === 'gestor') && (
-                                    <button
-                                        onClick={handleDeleteClan}
-                                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" /> Excluir Clã
-                                    </button>
-                                )}
+                    <div className="space-y-8">
+                        {/* Clan Header - Minimalist */}
+                        <div className="bg-[#202024] rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+                            <div className="h-32 bg-gradient-to-r from-gray-900 via-[#1a1a1e] to-gray-900 relative">
+                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                             </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-6">
-                            {/* Members List */}
-                            <div className="md:col-span-2 bg-gray-800 p-6 rounded-xl border border-gray-700">
-                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-purple-400" />
-                                    Membros ({members.length})
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {members.map(member => (
-                                        <div key={member.id} className="bg-gray-700/50 p-3 rounded-lg flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                                                {member.user_avatar ? (
-                                                    <img src={member.user_avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                                                ) : (
-                                                    <span className="font-bold text-gray-400">{member.user_nome[0]}</span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <Link to={member.user_id ? `/profile/${member.user_id}` : '#'} className={`font-bold hover:text-blue-400 hover:underline ${!member.user_id ? 'pointer-events-none text-gray-400' : ''}`}>
-                                                    {member.user_nome}
-                                                </Link>
-                                                <span className={`block w-fit text-xs px-2 py-0.5 rounded-full mt-1 ${member.papel === 'lider' ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-600 text-gray-300'
-                                                    }`}>
-                                                    {member.papel.toUpperCase()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Invite Action (Leader Only) */}
-                            {clan.lider_id === user?.id && (
-                                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 h-fit">
-                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                        <UserPlus className="w-5 h-5 text-blue-400" />
-                                        Convidar Membro
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <input
-                                            type="text"
-                                            placeholder="Buscar aluno (nome ou email)..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                                        />
-                                        {searchResults.length > 0 && (
-                                            <div className="bg-gray-700 rounded-lg max-h-48 overflow-y-auto border border-gray-600">
-                                                {searchResults.map(u => (
-                                                    <div key={u.id} className="p-2 hover:bg-gray-600 flex justify-between items-center border-b border-gray-600 last:border-0">
-                                                        <div>
-                                                            <p className="font-bold text-sm">{u.nome}</p>
-                                                            <p className="text-xs text-gray-400">{u.email}</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleInvite(u.email)}
-                                                            className="text-xs bg-blue-600 px-2 py-1 rounded hover:bg-blue-500"
-                                                        >
-                                                            Convidar
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {searchQuery.length > 2 && searchResults.length === 0 && (
-                                            <p className="text-sm text-gray-500 text-center">Nenhum aluno encontrado.</p>
-                                        )}
+                            <div className="px-8 pb-8 -mt-12 relative flex justify-between items-end">
+                                <div>
+                                    <div className="w-24 h-24 bg-[#121214] rounded-2xl border-4 border-[#202024] flex items-center justify-center shadow-lg">
+                                        <Shield className="w-12 h-12 text-white" />
+                                    </div>
+                                    <div className="mt-4">
+                                        <h1 className="text-3xl font-bold text-white tracking-tight">{clan.nome}</h1>
+                                        <p className="text-gray-400 mt-1">{clan.descricao}</p>
                                     </div>
                                 </div>
-                            )}
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleLeaveClan}
+                                        className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                                    >
+                                        <LogOut className="w-4 h-4" /> Sair
+                                    </button>
+                                    {(user?.papel === 'admin' || user?.papel === 'gestor') && (
+                                        <button
+                                            onClick={handleDeleteClan}
+                                            className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                                        >
+                                            <Trash2 className="w-4 h-4" /> Excluir
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Clan Chat */}
-                        <div className="mt-6">
-                            <ClanChat clanId={clan.id} currentUserId={user?.id || 0} />
+                        <div className="grid lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 space-y-8">
+                                {/* Members List */}
+                                <div className="bg-[#202024] rounded-2xl border border-gray-800 p-6">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                                            <Users className="w-5 h-5 text-gray-400" />
+                                            Membros
+                                            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded-full">{members.length}</span>
+                                        </h3>
+                                    </div>
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                        {members.map(member => (
+                                            <div key={member.id} className="bg-[#121214] p-3 rounded-xl border border-gray-800 flex items-center gap-4 hover:border-gray-700 transition-colors">
+                                                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center overflow-hidden">
+                                                    {member.user_avatar ? (
+                                                        <img src={member.user_avatar} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="font-medium text-gray-400">{member.user_nome[0]}</span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <Link to={member.user_id ? `/profile/${member.user_id}` : '#'} className={`font-medium text-sm hover:text-blue-400 transition-colors ${!member.user_id ? 'pointer-events-none text-gray-400' : 'text-gray-200'}`}>
+                                                        {member.user_nome}
+                                                    </Link>
+                                                    <span className={`block w-fit text-[10px] px-2 py-0.5 rounded-full mt-1 uppercase tracking-wider font-bold ${member.papel === 'lider' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-gray-800 text-gray-500'
+                                                        }`}>
+                                                        {member.papel}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Clan Missions */}
+                                <div className="bg-[#202024] rounded-2xl border border-gray-800 p-6">
+                                    <h3 className="text-lg font-medium text-white mb-6 flex items-center gap-2">
+                                        <Shield className="w-5 h-5 text-gray-400" />
+                                        Missões Ativas
+                                    </h3>
+                                    {clanMissions.length === 0 ? (
+                                        <div className="text-center py-8 text-gray-500 bg-[#121214] rounded-xl border border-gray-800 border-dashed">
+                                            Nenhuma missão ativa no momento
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {clanMissions.map(mission => (
+                                                <div key={mission.id} className="bg-[#121214] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h4 className="font-medium text-white">{mission.titulo}</h4>
+                                                        <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded font-medium">
+                                                            +{mission.moedas} Moedas
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-400 leading-relaxed">{mission.descricao}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Leader Progress View */}
+                                {clan.lider_id === user?.id && missionProgress.length > 0 && (
+                                    <div className="bg-[#202024] rounded-2xl border border-gray-800 p-6">
+                                        <h3 className="text-lg font-medium text-white mb-6 flex items-center gap-2">
+                                            <Shield className="w-5 h-5 text-emerald-500" />
+                                            Progresso das Missões (Líder)
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {missionProgress.map((prog, idx) => (
+                                                <div key={idx} className="bg-[#121214] p-5 rounded-xl border border-gray-800">
+                                                    <h4 className="font-medium text-white mb-4 border-b border-gray-800 pb-2">{prog.mission.titulo}</h4>
+
+                                                    <div className="grid md:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-3">Completaram ({prog.completed_by.length})</p>
+                                                            {prog.completed_by.length === 0 ? (
+                                                                <p className="text-xs text-gray-600 italic">Ninguém ainda</p>
+                                                            ) : (
+                                                                <div className="space-y-2">
+                                                                    {prog.completed_by.map((m: any) => (
+                                                                        <div key={m.id} className="flex items-center gap-2 text-sm text-gray-300">
+                                                                            <Check className="w-3 h-3 text-emerald-500" />
+                                                                            {m.user_nome}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3">Pendentes ({prog.pending_by.length})</p>
+                                                            {prog.pending_by.length === 0 ? (
+                                                                <p className="text-xs text-gray-600 italic">Todos completaram!</p>
+                                                            ) : (
+                                                                <div className="space-y-2">
+                                                                    {prog.pending_by.map((m: any) => (
+                                                                        <div key={m.id} className="flex items-center gap-2 text-sm text-gray-400">
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-red-500/50"></div>
+                                                                            {m.user_nome}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-8">
+                                {/* Invite Action (Leader Only) */}
+                                {clan.lider_id === user?.id && (
+                                    <div className="bg-[#202024] rounded-2xl border border-gray-800 p-6">
+                                        <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                            <UserPlus className="w-5 h-5 text-blue-500" />
+                                            Convidar Membro
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar aluno..."
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
+                                                    className="w-full bg-[#121214] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none text-sm"
+                                                />
+                                            </div>
+                                            {searchResults.length > 0 && (
+                                                <div className="bg-[#121214] rounded-lg max-h-48 overflow-y-auto border border-gray-700 custom-scrollbar">
+                                                    {searchResults.map(u => (
+                                                        <div key={u.id} className="p-3 hover:bg-gray-800 flex justify-between items-center border-b border-gray-800 last:border-0 transition-colors">
+                                                            <div>
+                                                                <p className="font-medium text-sm text-white">{u.nome}</p>
+                                                                <p className="text-xs text-gray-500">{u.email}</p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleInvite(u.email)}
+                                                                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-colors"
+                                                            >
+                                                                Convidar
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {searchQuery.length > 2 && searchResults.length === 0 && (
+                                                <p className="text-sm text-gray-500 text-center py-2">Nenhum aluno encontrado.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Clan Chat */}
+                                <div className="bg-[#202024] rounded-2xl border border-gray-800 overflow-hidden">
+                                    <div className="p-4 border-b border-gray-800">
+                                        <h3 className="text-lg font-medium text-white">Chat do Clã</h3>
+                                    </div>
+                                    <div className="p-4">
+                                        <ClanChat clanId={clan.id} currentUserId={user?.id || 0} />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

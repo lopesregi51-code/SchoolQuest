@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
-import { User, Shield, BookOpen, Image, ArrowLeft, Trash2, Upload, Gift } from 'lucide-react';
+import { User, Shield, BookOpen, Image, ArrowLeft, Trash2, Upload, Gift, QrCode } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 
 interface UserProfileData {
@@ -20,6 +20,7 @@ interface UserProfileData {
     streak_count?: number;
     escola_nome?: string;
     joined_at: string;
+    qr_token?: string;
     clan?: {
         id: number;
         nome: string;
@@ -45,6 +46,7 @@ export const UserProfile: React.FC = () => {
     const [profile, setProfile] = useState<UserProfileData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [showQrModal, setShowQrModal] = useState(false);
     const [editForm, setEditForm] = useState({
         nome: '',
         email: '',
@@ -243,6 +245,16 @@ export const UserProfile: React.FC = () => {
                         </div>
 
                         <div className="absolute top-4 right-4 flex gap-2">
+                            {isOwner && (
+                                <button
+                                    onClick={() => setShowQrModal(true)}
+                                    className="p-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg transition-colors"
+                                    title="Meu QR Code"
+                                >
+                                    <QrCode className="w-5 h-5" />
+                                </button>
+                            )}
+
                             {canEdit && (
                                 <button
                                     onClick={() => setIsEditing(true)}
@@ -497,6 +509,40 @@ export const UserProfile: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showQrModal && profile && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowQrModal(false)}>
+                    <div className="bg-white rounded-2xl p-8 w-full max-w-sm text-center relative" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Seu QR Code</h2>
+                        <p className="text-gray-500 mb-6">Apresente este código ao professor para validar missões.</p>
+
+                        <div className="flex justify-center mb-6">
+                            {profile.qr_token ? (
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=schoolquest:token:${profile.qr_token}`}
+                                    alt="QR Code"
+                                    className="w-64 h-64"
+                                />
+                            ) : (
+                                <div className="w-64 h-64 bg-gray-200 flex items-center justify-center text-gray-500">
+                                    QR Token não encontrado
+                                </div>
+                            )}
+                        </div>
+
+                        <p className="text-xs text-gray-400 font-mono break-all mb-6">
+                            {profile.qr_token || 'Sem token'}
+                        </p>
+
+                        <button
+                            onClick={() => setShowQrModal(false)}
+                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors"
+                        >
+                            Fechar
+                        </button>
                     </div>
                 </div>
             )}

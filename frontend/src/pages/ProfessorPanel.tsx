@@ -15,16 +15,38 @@ export const ProfessorPanel: React.FC = () => {
     const [myMissions, setMyMissions] = useState<any[]>([]);
 
     const [completedMissions, setCompletedMissions] = useState<any[]>([]);
+    const [clans, setClans] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         titulo: '',
         descricao: '',
         pontos: 10,
         moedas: 5,
-        categoria: 'diaria'
+        categoria: 'diaria',
+        tipo: 'individual',
+        clan_id: ''
     });
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
+    useEffect(() => {
+        fetchMyMissions();
+        fetchCompletedMissions();
+        fetchClans();
 
+        return () => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().catch(console.error);
+            }
+        };
+    }, []);
+
+    const fetchClans = async () => {
+        try {
+            const response = await apiClient.get('/clans/');
+            setClans(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar clãs', error);
+        }
+    };
 
     const fetchCompletedMissions = async () => {
         try {
@@ -40,11 +62,6 @@ export const ProfessorPanel: React.FC = () => {
         if (!email) return;
 
         try {
-            // First find the user by email (we need an endpoint for this or search)
-            // For MVP, let's assume we have a search endpoint or we can try to find locally if we had the list.
-            // Since we don't have a direct 'get user by email' for professors easily exposed without search,
-            // let's use the search endpoint I noticed in main.py: /users/search?q=...
-
             const searchRes = await apiClient.get(`/users/search?q=${email}`);
             const students = searchRes.data;
             const student = students.find((s: any) => s.email === email);
@@ -59,13 +76,10 @@ export const ProfessorPanel: React.FC = () => {
                 aluno_id: student.id
             });
             alert(`Missão atribuída para ${student.nome}!`);
-            alert(`Missão atribuída para ${student.nome}!`);
         } catch (error: any) {
             alert(error.response?.data?.detail || 'Erro ao atribuir missão');
         }
     };
-
-
 
     const fetchMyMissions = async () => {
         try {
@@ -92,14 +106,23 @@ export const ProfessorPanel: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await apiClient.post('/missoes/', formData);
+            const payload: any = { ...formData };
+            if (payload.tipo === 'clan' && payload.clan_id) {
+                payload.clan_id = parseInt(payload.clan_id);
+            } else {
+                delete payload.clan_id;
+            }
+
+            await apiClient.post('/missoes/', payload);
             alert('Missão criada com sucesso!');
             setFormData({
                 titulo: '',
                 descricao: '',
                 pontos: 10,
                 moedas: 5,
-                categoria: 'diaria'
+                categoria: 'diaria',
+                tipo: 'individual',
+                clan_id: ''
             });
             setIsCreating(false);
             fetchMyMissions(); // Refresh list after creation
@@ -112,23 +135,33 @@ export const ProfessorPanel: React.FC = () => {
         if (!validatingMissionId) return;
 
         try {
-            // Parse QR data to get user ID
-            // Format: schoolquest:user:{id}:{email}
-            const parts = qrData.split(':');
-            if (parts.length !== 4 || parts[0] !== 'schoolquest' || parts[1] !== 'user') {
-                alert('QR Code inválido');
+            let payload: any = {};
+
+            // Check for new token format: schoolquest:token:{token}
+            if (qrData.startsWith('schoolquest:token:')) {
+                const token = qrData.split(':')[2];
+                payload = { qr_token: token };
+            }
+            // Check for old format: schoolquest:user:{id}:{email}
+            else if (qrData.startsWith('schoolquest:user:')) {
+                const parts = qrData.split(':');
+                const userId = parseInt(parts[2]);
+                if (!isNaN(userId)) {
+                    payload = { aluno_id: userId };
+                }
+            } else {
+                // Try as raw token if it's a UUID-like string? 
+                // Or just assume it's invalid if not prefixed
+                alert('Formato de QR Code inválido');
                 return;
             }
 
-            const userId = parseInt(parts[2]);
-            if (isNaN(userId)) {
-                alert('ID de usuário inválido no QR Code');
+            if (!payload.aluno_id && !payload.qr_token) {
+                alert('Dados do QR Code inválidos');
                 return;
             }
 
-            const res = await apiClient.post(`/missoes/${validatingMissionId}/validar_presencial`, {
-                aluno_id: userId
-            });
+            const res = await apiClient.post(`/missoes/${validatingMissionId}/validar_presencial`, payload);
 
             alert(res.data.message);
 
@@ -157,15 +190,8 @@ export const ProfessorPanel: React.FC = () => {
                 (decodedText) => {
                     // QR Code detected
                     validateQrCode(decodedText);
-                    stopQrScanner();
-
-                    // Hide scanner and show manual input
-                    const scanner = document.getElementById('qr-scanner');
-                    const manualInput = document.getElementById('manual-qr-section');
-                    if (scanner && manualInput) {
-                        scanner.classList.add('hidden');
-                        manualInput.classList.remove('hidden');
-                    }
+                    // Don't stop immediately to allow continuous scanning? No, usually one by one.
+                    // stopQrScanner(); // Moved to success callback
                 },
                 (_) => {
                     // Ignore scanning errors (they happen continuously)
@@ -186,20 +212,6 @@ export const ProfessorPanel: React.FC = () => {
             console.error('Error stopping QR scanner:', err);
         }
     };
-
-    useEffect(() => {
-
-        fetchMyMissions();
-
-        fetchCompletedMissions();
-
-        // Cleanup scanner on unmount
-        return () => {
-            if (html5QrCodeRef.current?.isScanning) {
-                html5QrCodeRef.current.stop().catch(console.error);
-            }
-        };
-    }, []);
 
     if (!user) return null;
 
@@ -271,7 +283,7 @@ export const ProfessorPanel: React.FC = () => {
                                     />
                                 </div>
 
-                                <div className="grid md:grid-cols-3 gap-4">
+                                <div className="grid md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-gray-300 text-sm font-medium mb-2">
                                             Pontos XP
@@ -299,7 +311,9 @@ export const ProfessorPanel: React.FC = () => {
                                             required
                                         />
                                     </div>
+                                </div>
 
+                                <div className="grid md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-gray-300 text-sm font-medium mb-2">
                                             Categoria
@@ -315,7 +329,40 @@ export const ProfessorPanel: React.FC = () => {
                                             <option value="escolar">Escolar</option>
                                         </select>
                                     </div>
+
+                                    <div>
+                                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                                            Tipo de Missão
+                                        </label>
+                                        <select
+                                            value={formData.tipo}
+                                            onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                                        >
+                                            <option value="individual">Individual (Aluno)</option>
+                                            <option value="clan">Clã (Coletiva)</option>
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {formData.tipo === 'clan' && (
+                                    <div>
+                                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                                            Selecione o Clã
+                                        </label>
+                                        <select
+                                            value={formData.clan_id}
+                                            onChange={(e) => setFormData({ ...formData, clan_id: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                                            required
+                                        >
+                                            <option value="">Selecione um clã...</option>
+                                            {clans.map(clan => (
+                                                <option key={clan.id} value={clan.id}>{clan.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div className="flex gap-3">
                                     <button
@@ -352,7 +399,14 @@ export const ProfessorPanel: React.FC = () => {
                                 {myMissions.map((mission) => (
                                     <div key={mission.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600 flex justify-between items-center">
                                         <div>
-                                            <h3 className="font-bold text-lg">{mission.titulo}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-lg">{mission.titulo}</h3>
+                                                {mission.tipo === 'clan' && (
+                                                    <span className="px-2 py-0.5 bg-purple-900 text-purple-200 text-xs rounded border border-purple-500/30">
+                                                        Clã
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-gray-300">{mission.descricao}</p>
                                             <div className="flex gap-2 mt-1 text-xs">
                                                 <span className="text-yellow-400">{mission.pontos} XP</span>
@@ -361,13 +415,15 @@ export const ProfessorPanel: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleAssignMission(mission.id)}
-                                                className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm transition-colors"
-                                                title="Atribuir a Aluno"
-                                            >
-                                                Atribuir
-                                            </button>
+                                            {mission.tipo === 'individual' && (
+                                                <button
+                                                    onClick={() => handleAssignMission(mission.id)}
+                                                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm transition-colors"
+                                                    title="Atribuir a Aluno"
+                                                >
+                                                    Atribuir
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => handleDeleteMission(mission.id)}
                                                 className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"

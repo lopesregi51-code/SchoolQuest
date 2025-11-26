@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Target, LogOut, Star, User, Users, Image } from 'lucide-react';
+import { Target, LogOut, Star, User, Users, Image, QrCode } from 'lucide-react';
 import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ export const StudentDashboard: React.FC = () => {
     const [missions, setMissions] = useState<Mission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'disponivel' | 'pendente' | 'aprovada'>('disponivel');
+    const [showQrModal, setShowQrModal] = useState(false);
 
     const [receivedMissions, setReceivedMissions] = useState<any[]>([]);
 
@@ -96,6 +97,13 @@ export const StudentDashboard: React.FC = () => {
 
 
                     <button
+                        onClick={() => setShowQrModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
+                    >
+                        <QrCode className="w-4 h-4" />
+                        Meu QR
+                    </button>
+                    <button
                         onClick={() => navigate('/profile')}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
                     >
@@ -111,6 +119,40 @@ export const StudentDashboard: React.FC = () => {
                     </button>
                 </div>
             </header>
+
+            {showQrModal && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowQrModal(false)}>
+                    <div className="bg-white rounded-2xl p-8 w-full max-w-sm text-center relative" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Seu QR Code</h2>
+                        <p className="text-gray-500 mb-6">Apresente este código ao professor para validar missões.</p>
+
+                        <div className="flex justify-center mb-6">
+                            {user.qr_token ? (
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=schoolquest:token:${user.qr_token}`}
+                                    alt="QR Code"
+                                    className="w-64 h-64"
+                                />
+                            ) : (
+                                <div className="w-64 h-64 bg-gray-200 flex items-center justify-center text-gray-500">
+                                    QR Token não encontrado
+                                </div>
+                            )}
+                        </div>
+
+                        <p className="text-xs text-gray-400 font-mono break-all mb-6">
+                            {user.qr_token || 'Sem token'}
+                        </p>
+
+                        <button
+                            onClick={() => setShowQrModal(false)}
+                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Main Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -50,6 +50,9 @@ class User(Base):
     disciplina = Column(String, nullable=True) # Ex: "Matemática" (para professores)
     escola_id = Column(Integer, ForeignKey("escolas.id"), nullable=True)
     
+    # QR Code Único
+    qr_token = Column(String, unique=True, nullable=True, index=True)
+    
     # Gamification Fields
     bio = Column(String, nullable=True)
     interesses = Column(String, nullable=True)
@@ -79,6 +82,10 @@ class Missao(Base):
     
     criador_id = Column(Integer, ForeignKey("users.id"))
     turma_id = Column(Integer, nullable=True)
+    
+    # Novos campos para Tipos de Missão
+    tipo = Column(String, default='individual') # 'individual', 'clan'
+    clan_id = Column(Integer, ForeignKey("clans.id"), nullable=True)
     
     data_limite = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
@@ -175,6 +182,9 @@ class Clan(Base):
     lider_id = Column(Integer, ForeignKey("users.id"))
     criado_em = Column(DateTime, default=datetime.utcnow)
     escola_id = Column(Integer, ForeignKey("escolas.id"))
+    
+    # Economia do Clã
+    moedas = Column(Integer, default=0)
 
     lider = relationship("User", foreign_keys=[lider_id])
     membros = relationship("ClanMember", back_populates="clan")
