@@ -1377,45 +1377,6 @@ def update_profile(bio: str = None, interesses: str = None, db: Session = Depend
         logger.error(f"Error updating profile: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar perfil: {str(e)}")
 
-@app.post("/users/me/avatar", response_model=schemas.UserResponse)
-async def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    # Validar arquivo
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Arquivo deve ser uma imagem")
-    
-    # Verificar tamanho (ler o arquivo para memória para checar tamanho - cuidado com arquivos muito grandes em prod)
-    content = await file.read()
-    if len(content) > 5 * 1024 * 1024: # 5MB
-        raise HTTPException(status_code=400, detail="Imagem deve ter no máximo 5MB")
-
-    # Salvar o arquivo de avatar no disco
-    avatar_dir = os.path.join(os.getcwd(), "media", "avatars")
-    os.makedirs(avatar_dir, exist_ok=True)
-    
-    # Sanitize filename
-    safe_filename = "".join([c for c in file.filename if c.isalnum() or c in ('._-')]).strip()
-    if not safe_filename:
-        safe_filename = "avatar.png"
-        
-    # Nome único para evitar colisões
-    filename = f"user_{current_user.id}_{int(datetime.utcnow().timestamp())}_{safe_filename}"
-    file_path = os.path.join(avatar_dir, filename)
-    
-    try:
-        with open(file_path, "wb") as buffer:
-            buffer.write(content)
-    except Exception as e:
-        logger.error(f"Error saving avatar file: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao salvar imagem")
-        
-    # Atualizar URL do avatar no usuário (caminho relativo para servir via /media)
-    # Ensure forward slashes for URL
-    current_user.avatar_url = f"/media/avatars/{filename}"
-    db.commit()
-    db.refresh(current_user)
-    logger.info(f"Avatar uploaded and saved for {current_user.email} at {current_user.avatar_url}")
-    return current_user
-
 @app.get("/users/me/inventory")
 def get_inventory(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     inventario = db.query(models.UserItem).filter(models.UserItem.user_id == current_user.id).all()
