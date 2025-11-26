@@ -10,6 +10,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 export const ProfessorPanel: React.FC = () => {
     const { user, logout } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
+    const [validatingMissionId, setValidatingMissionId] = useState<number | null>(null);
 
     const [myMissions, setMyMissions] = useState<any[]>([]);
 
@@ -108,10 +109,34 @@ export const ProfessorPanel: React.FC = () => {
     };
 
     const validateQrCode = async (qrData: string) => {
+        if (!validatingMissionId) return;
+
         try {
-            const res = await apiClient.post('/users/validate_qrcode', { qr_data: qrData });
-            const student = res.data;
-            alert(`Aluno Encontrado:\nNome: ${student.nome}\nSérie: ${student.serie}\nNível: ${student.nivel}\nXP: ${student.xp}`);
+            // Parse QR data to get user ID
+            // Format: schoolquest:user:{id}:{email}
+            const parts = qrData.split(':');
+            if (parts.length !== 4 || parts[0] !== 'schoolquest' || parts[1] !== 'user') {
+                alert('QR Code inválido');
+                return;
+            }
+
+            const userId = parseInt(parts[2]);
+            if (isNaN(userId)) {
+                alert('ID de usuário inválido no QR Code');
+                return;
+            }
+
+            const res = await apiClient.post(`/missoes/${validatingMissionId}/validar_presencial`, {
+                aluno_id: userId
+            });
+
+            alert(res.data.message);
+
+            // Close scanner if successful
+            setValidatingMissionId(null);
+            stopQrScanner();
+            fetchCompletedMissions();
+
         } catch (error: any) {
             alert(error.response?.data?.detail || 'Erro ao validar QR Code');
         }
@@ -350,6 +375,16 @@ export const ProfessorPanel: React.FC = () => {
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
+                                            <button
+                                                onClick={() => {
+                                                    setValidatingMissionId(mission.id);
+                                                    setTimeout(() => startQrScanner(), 100); // Wait for modal to render
+                                                }}
+                                                className="p-2 text-purple-400 hover:bg-purple-900/30 rounded-lg transition-colors"
+                                                title="Validar Presencialmente (QR)"
+                                            >
+                                                <QrCode className="w-5 h-5" />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -388,85 +423,7 @@ export const ProfessorPanel: React.FC = () => {
                         )}
                     </div>
 
-                    {/* QR Scanner / Validation */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold flex items-center gap-2">
-                                <QrCode className="w-6 h-6 text-purple-400" />
-                                Validar via QR Code
-                            </h2>
-                        </div>
 
-                        <div className="space-y-4">
-                            {/* Camera Scanner */}
-                            <div>
-                                <button
-                                    onClick={() => {
-                                        const scanner = document.getElementById('qr-scanner');
-                                        const manualInput = document.getElementById('manual-qr-section');
-                                        if (scanner && manualInput) {
-                                            const isHidden = scanner.classList.contains('hidden');
-                                            if (isHidden) {
-                                                scanner.classList.remove('hidden');
-                                                manualInput.classList.add('hidden');
-                                                startQrScanner();
-                                            } else {
-                                                scanner.classList.add('hidden');
-                                                manualInput.classList.remove('hidden');
-                                                stopQrScanner();
-                                            }
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <QrCode className="w-5 h-5" />
-                                    Escanear com Câmera
-                                </button>
-                            </div>
-
-                            {/* QR Scanner Container */}
-                            <div id="qr-scanner" className="hidden">
-                                <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
-                                <button
-                                    onClick={() => {
-                                        const scanner = document.getElementById('qr-scanner');
-                                        const manualInput = document.getElementById('manual-qr-section');
-                                        if (scanner && manualInput) {
-                                            scanner.classList.add('hidden');
-                                            manualInput.classList.remove('hidden');
-                                            stopQrScanner();
-                                        }
-                                    }}
-                                    className="mt-2 w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
-                                >
-                                    Fechar Câmera
-                                </button>
-                            </div>
-
-                            {/* Manual Input */}
-                            <div id="manual-qr-section" className="space-y-2">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Ou cole o código do QR aqui (ex: schoolquest:user:1:...)"
-                                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                        id="qrInput"
-                                    />
-                                    <button
-                                        onClick={async () => {
-                                            const input = document.getElementById('qrInput') as HTMLInputElement;
-                                            if (!input.value) return;
-                                            await validateQrCode(input.value);
-                                            input.value = '';
-                                        }}
-                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
-                                    >
-                                        Validar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
 
                 </div>
@@ -476,6 +433,54 @@ export const ProfessorPanel: React.FC = () => {
                     <Ranking />
                 </div>
             </div>
+
+            {/* QR Code Scanner Modal */}
+            {validatingMissionId && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700 relative">
+                        <button
+                            onClick={() => {
+                                setValidatingMissionId(null);
+                                stopQrScanner();
+                            }}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                        >
+                            <Trash2 className="w-6 h-6 rotate-45" />
+                        </button>
+
+                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                            <QrCode className="w-6 h-6 text-purple-400" />
+                            Validar Missão
+                        </h2>
+
+                        <p className="text-gray-300 mb-4">
+                            Escaneie o QR Code do aluno para validar a missão automaticamente.
+                        </p>
+
+                        <div id="qr-reader" className="w-full rounded-lg overflow-hidden bg-black mb-4 min-h-[250px]"></div>
+
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Ou cole o código do QR aqui..."
+                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                id="qrInputModal"
+                            />
+                            <button
+                                onClick={async () => {
+                                    const input = document.getElementById('qrInputModal') as HTMLInputElement;
+                                    if (!input.value) return;
+                                    await validateQrCode(input.value);
+                                    input.value = '';
+                                }}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
+                            >
+                                Validar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

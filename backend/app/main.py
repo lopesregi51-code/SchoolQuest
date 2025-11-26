@@ -1198,6 +1198,74 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
     db.commit()
     return {"message": "Missão validada com sucesso!"}
 
+
+class ValidacaoPresencialRequest(BaseModel):
+    aluno_id: int
+
+@app.post("/missoes/{missao_id}/validar_presencial")
+def validar_missao_presencial(
+    missao_id: int,
+    request: ValidacaoPresencialRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Valida uma missão presencialmente para um aluno específico (via QR Code)."""
+    # Verificar permissões (professor criador ou admin/gestor)
+    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
+    if not missao:
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+        
+    if current_user.papel == 'professor' and missao.criador_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Você só pode validar suas próprias missões")
+        
+    if current_user.papel == 'aluno':
+        raise HTTPException(status_code=403, detail="Alunos não podem validar missões")
+
+    # Verificar se aluno existe
+    aluno = db.query(models.User).filter(models.User.id == request.aluno_id).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    # Verificar se já completou
+    conclusao = db.query(models.MissaoConcluida).filter(
+        models.MissaoConcluida.missao_id == missao_id,
+        models.MissaoConcluida.aluno_id == request.aluno_id
+    ).first()
+    
+    if conclusao:
+        if conclusao.validada:
+            return {"message": "Missão já foi validada para este aluno", "status": "already_validated", "aluno": aluno.nome}
+        else:
+            # Já enviou mas não validou -> Validar agora
+            conclusao.validada = True
+            conclusao.data_validacao = datetime.utcnow()
+            
+            # Dar recompensas
+            aluno.xp += missao.pontos
+            aluno.moedas += missao.moedas
+            
+            db.commit()
+            return {"message": "Missão validada com sucesso!", "status": "validated", "aluno": aluno.nome}
+            
+    # Criar nova conclusão validada
+    nova_conclusao = models.MissaoConcluida(
+        missao_id=missao_id,
+        aluno_id=request.aluno_id,
+        data_solicitacao=datetime.utcnow(),
+        validada=True,
+        data_validacao=datetime.utcnow(),
+        foto_url=None # Presencial não precisa de foto
+    )
+    db.add(nova_conclusao)
+    
+    # Dar recompensas
+    aluno.xp += missao.pontos
+    aluno.moedas += missao.moedas
+    
+    db.commit()
+    
+    return {"message": f"Missão validada para {aluno.nome}!", "status": "created_and_validated", "aluno": aluno.nome}
+
 @app.post("/users/import")
 async def import_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.papel != 'gestor':
