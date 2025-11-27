@@ -718,25 +718,7 @@ def save_avatar_for_user(user: models.User, contents: bytes, extension: str, db:
     logger.info(f"Avatar saved for user {user.email}: {user.avatar_url}")
     return user
 
-@app.post("/users/me/avatar", response_model=schemas.UserResponse)
-async def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Upload user avatar image with validation, resizing, and cleanup."""
-    try:
-        logger.info(f"Avatar upload started for user {current_user.email}")
-        
-        # Process image
-        contents, extension = await process_avatar_image(file)
-        
-        # Save and update user
-        updated_user = save_avatar_for_user(current_user, contents, extension, db)
-        
-        return updated_user
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error uploading avatar: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar imagem: {str(e)}")
+
 @app.post("/users/{user_id}/avatar", response_model=schemas.UserResponse)
 async def upload_user_avatar(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Upload avatar for a specific user - only owner or admin can upload."""
@@ -950,6 +932,7 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                     "criador_id": missao.criador_id,
                     "tipo": missao.tipo,
                     "clan_id": missao.clan_id,
+                    "criado_em": missao.criado_em,
                     "status": "disponivel"  # default
                 }
                 
@@ -1088,10 +1071,19 @@ def read_missoes_pendentes(db: Session = Depends(get_db), current_user: models.U
         logger.error(f"Error fetching pending missions for {current_user.nome}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao buscar missões pendentes: {str(e)}")
 
-@app.get("/missoes/submetidas")
-def read_missoes_submetidas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """DEPRECATED: Use /missoes/pendentes instead."""
-    return read_missoes_pendentes(db, current_user)
+
+@app.get("/missoes/recebidas", response_model=list[schemas.MissaoAtribuidaResponse])
+def read_missoes_recebidas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar missões atribuídas ao aluno."""
+    if current_user.papel != 'aluno':
+        raise HTTPException(status_code=403, detail="Apenas alunos podem acessar esta rota")
+    
+    missoes_atribuidas = db.query(models.MissaoAtribuida).filter(
+        models.MissaoAtribuida.aluno_id == current_user.id,
+        models.MissaoAtribuida.status == 'pendente'
+    ).all()
+    
+    return missoes_atribuidas
 
 @app.post("/missoes/validar/{submissao_id}")
 def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -1526,6 +1518,14 @@ def create_clan(clan: schemas.ClanCreate, db: Session = Depends(get_db), current
     logger.info(f"Clan created: {clan.nome} by {current_user.nome}")
     return db_clan
 
+@app.get("/clans/", response_model=list[schemas.ClanResponse])
+def read_clans(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar clãs da escola do usuário."""
+    if not current_user.escola_id:
+        return []
+    clans = db.query(models.Clan).filter(models.Clan.escola_id == current_user.escola_id).all()
+    return clans
+
 @app.get("/clans/me", response_model=Optional[schemas.ClanResponse])
 def get_my_clan(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     membership = db.query(models.ClanMember).filter(models.ClanMember.user_id == current_user.id).first()
@@ -1705,84 +1705,11 @@ def leave_clan(db: Session = Depends(get_db), current_user: models.User = Depend
     db.commit()
     return {"message": "Você saiu do clã"}
 
-@app.get("/clans/suggestions", response_model=list[schemas.ClanResponse])
-def get_clan_suggestions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Retorna sugestões de clãs (por enquanto, todos os clãs da escola do aluno)."""
-    if not current_user.escola_id:
-        return []
-        
-    clans = db.query(models.Clan).filter(models.Clan.escola_id == current_user.escola_id).limit(5).all()
-    return clans
+
         
 
 
-# --- Mural System ---
 
-@app.get("/mural", response_model=list[schemas.MuralPostResponse])
-def get_mural_posts(skip: int = 0, limit: int = 20, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    posts = db.query(models.MuralPost).order_by(models.MuralPost.criado_em.desc()).offset(skip).limit(limit).all()
-    
-    results = []
-    for post in posts:
-        results.append(schemas.MuralPostResponse(
-            id=post.id,
-            user_id=post.user_id,
-            user_nome=post.user.nome,
-            user_avatar=post.user.avatar_url,
-            conteudo=post.conteudo,
-            imagem_url=post.imagem_url,
-            likes=post.likes,
-            criado_em=post.criado_em,
-            liked_by_me=False 
-        ))
-    return results
-
-@app.post("/mural", response_model=schemas.MuralPostResponse)
-def create_mural_post(post: schemas.MuralPostCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    db_post = models.MuralPost(
-        user_id=current_user.id,
-        conteudo=post.conteudo,
-        imagem_url=post.imagem_url
-    )
-    db.add(db_post)
-    db.commit()
-    db.refresh(db_post)
-    
-    return schemas.MuralPostResponse(
-        id=db_post.id,
-        user_id=db_post.user_id,
-        user_nome=current_user.nome,
-        user_avatar=current_user.avatar_url,
-        conteudo=db_post.conteudo,
-        imagem_url=db_post.imagem_url,
-        likes=db_post.likes,
-        criado_em=db_post.criado_em,
-        liked_by_me=False
-    )
-
-@app.post("/mural/{post_id}/like")
-def like_mural_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    post = db.query(models.MuralPost).filter(models.MuralPost.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post não encontrado")
-    
-    post.likes += 1
-    db.commit()
-    
-    return {"message": "Post curtido", "likes": post.likes}
-
-@app.delete("/mural/{post_id}")
-def delete_mural_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    post = db.query(models.MuralPost).filter(models.MuralPost.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post não encontrado")
-    
-    if current_user.papel != 'admin' and current_user.papel != 'gestor' and post.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Acesso negado")
-        
-    db.delete(post)
-    db.commit()
-    return {"message": "Post excluído"}
 
 @app.delete("/clans/{clan_id}")
 def delete_clan(clan_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
