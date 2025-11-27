@@ -1062,7 +1062,7 @@ def read_missoes_pendentes(db: Session = Depends(get_db), current_user: models.U
                 "missao_titulo": pendente.missao.titulo,
                 "aluno_id": pendente.aluno_id,
                 "aluno_nome": pendente.aluno.nome,
-                "aluno_serie": pendente.aluno.serie_nome if pendente.aluno.serie else "Sem série",
+                "aluno_serie": pendente.aluno.serie_nome or "Sem série",
                 "data_solicitacao": pendente.data_solicitacao
             })
         
@@ -1144,7 +1144,7 @@ def read_professor_completed_missions(db: Session = Depends(get_db), current_use
                 "missao_titulo": conclusao.missao.titulo,
                 "aluno_id": conclusao.aluno_id,
                 "aluno_nome": conclusao.aluno.nome,
-                "aluno_serie": conclusao.aluno.serie_nome if conclusao.aluno.serie else "Sem série",
+                "aluno_serie": conclusao.aluno.serie_nome or "Sem série",
                 "data_validacao": conclusao.data_validacao,
                 "validada": conclusao.validada
             })
