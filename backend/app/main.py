@@ -1055,7 +1055,8 @@ def read_professor_completed_missions(db: Session = Depends(get_db), current_use
             "missao_titulo": conclusao.missao.titulo,
             "aluno_id": conclusao.aluno_id,
             "aluno_nome": conclusao.aluno.nome,
-            "data_conclusao": conclusao.data_validacao,
+            "aluno_serie": conclusao.aluno.serie_nome if conclusao.aluno.serie else "Sem série",
+            "data_validacao": conclusao.data_validacao,
             "validada": conclusao.validada
         })
     
