@@ -23,9 +23,9 @@ def get_or_create_school(db: Session, nome: str):
         db.add(school)
         db.commit()
         db.refresh(school)
-        print(f"✓ Created School: {nome}")
+        print(f"[OK] Created School: {nome}")
     else:
-        print(f"• School already exists: {nome}")
+        print(f"[SKIP] School already exists: {nome}")
     return school
 
 def get_or_create_user(db: Session, nome, email, senha, papel, escola_id=None, serie_id=None):
@@ -42,9 +42,9 @@ def get_or_create_user(db: Session, nome, email, senha, papel, escola_id=None, s
         db.add(user)
         db.commit()
         db.refresh(user)
-        print(f"✓ Created User: {email} ({papel})")
+        print(f"[OK] Created User: {email} ({papel})")
     else:
-        print(f"• User already exists: {email}")
+        print(f"[SKIP] User already exists: {email}")
     return user
 
 def get_or_create_serie(db: Session, nome: str, escola_id: int):
@@ -54,9 +54,9 @@ def get_or_create_serie(db: Session, nome: str, escola_id: int):
         db.add(serie)
         db.commit()
         db.refresh(serie)
-        print(f"✓ Created Serie: {nome}")
+        print(f"[OK] Created Serie: {nome}")
     else:
-        print(f"• Serie already exists: {nome}")
+        print(f"[SKIP] Serie already exists: {nome}")
     return serie
 
 def seed_missions(db: Session, professor_id: int):
@@ -97,9 +97,9 @@ def seed_missions(db: Session, professor_id: int):
     
     db.commit()
     if count > 0:
-        print(f"✓ Created {count} demo missions")
+        print(f"[OK] Created {count} demo missions")
     else:
-        print("• Missions already exist")
+        print("[SKIP] Missions already exist")
 
 def main():
     print("=== Seeding Database ===")
@@ -128,7 +128,7 @@ def main():
         print("\n=== Seeding Complete ===")
         
     except Exception as e:
-        print(f"\n❌ Error during seeding: {e}")
+        print(f"\n[ERROR] Error during seeding: {e}")
         db.rollback()
     finally:
         db.close()
