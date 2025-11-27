@@ -376,7 +376,7 @@ async def upload_csv(
     try:
         # Read CSV
         contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
+        df = pd.read_csv(BytesIO(contents))
         
         logger.info(f"Processing CSV upload: type={tipo}, rows={len(df)}, user={current_user.email}, papel={current_user.papel}")
         
