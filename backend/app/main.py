@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 import logging
 from datetime import datetime, timedelta
 from . import models, schemas, database, auth
@@ -913,62 +914,76 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
 @app.get("/missoes/", response_model=list[schemas.MissaoResponse])
 def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Listar todas as missões disponíveis."""
-    if current_user.papel == 'aluno':
-        # Students see missions from their school and clan missions from their clan
-        missoes = db.query(models.Missao).filter(
-            models.Missao.criador_id.in_(
-                db.query(models.User.id).filter(models.User.escola_id == current_user.escola_id)
-            )
-        ).all()
-        
-        # Add clan missions if student is in a clan
-        clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == current_user.id).first()
-        if clan_member:
-            clan_missions = db.query(models.Missao).filter(
-                models.Missao.tipo == 'clan',
-                models.Missao.clan_id == clan_member.clan_id
+    try:
+        if current_user.papel == 'aluno':
+            logger.info(f"Fetching missions for student: {current_user.nome} (escola_id: {current_user.escola_id})")
+            
+            # Students see missions from their school - using JOIN instead of subquery
+            missoes = db.query(models.Missao).join(
+                models.User, models.Missao.criador_id == models.User.id
+            ).filter(
+                models.User.escola_id == current_user.escola_id
             ).all()
-            missoes.extend(clan_missions)
-        
-        # Add status for each mission
-        result = []
-        for missao in missoes:
-            missao_dict = {
-                "id": missao.id,
-                "titulo": missao.titulo,
-                "descricao": missao.descricao,
-                "pontos": missao.pontos,
-                "moedas": missao.moedas,
-                "categoria": missao.categoria,
-                "criador_id": missao.criador_id,
-                "tipo": missao.tipo,
-                "clan_id": missao.clan_id,
-                "status": "disponivel"  # default
-            }
             
-            # Check if student has completed this mission
-            conclusao = db.query(models.MissaoConcluida).filter(
-                models.MissaoConcluida.missao_id == missao.id,
-                models.MissaoConcluida.aluno_id == current_user.id
-            ).first()
+            logger.info(f"Found {len(missoes)} school missions for student {current_user.nome}")
             
-            if conclusao:
-                if conclusao.validada:
-                    missao_dict["status"] = "aprovada"
-                else:
-                    missao_dict["status"] = "pendente"
+            # Add clan missions if student is in a clan
+            clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == current_user.id).first()
+            if clan_member:
+                clan_missions = db.query(models.Missao).filter(
+                    models.Missao.tipo == 'clan',
+                    models.Missao.clan_id == clan_member.clan_id
+                ).all()
+                logger.info(f"Found {len(clan_missions)} clan missions for student {current_user.nome}")
+                missoes.extend(clan_missions)
             
-            result.append(missao_dict)
-        
-        return result
-    else:
-        # Professors and managers see all missions from their school
-        missoes = db.query(models.Missao).filter(
-            models.Missao.criador_id.in_(
-                db.query(models.User.id).filter(models.User.escola_id == current_user.escola_id)
-            )
-        ).all()
-        return missoes
+            # Add status for each mission
+            result = []
+            for missao in missoes:
+                missao_dict = {
+                    "id": missao.id,
+                    "titulo": missao.titulo,
+                    "descricao": missao.descricao,
+                    "pontos": missao.pontos,
+                    "moedas": missao.moedas,
+                    "categoria": missao.categoria,
+                    "criador_id": missao.criador_id,
+                    "tipo": missao.tipo,
+                    "clan_id": missao.clan_id,
+                    "status": "disponivel"  # default
+                }
+                
+                # Check if student has completed this mission
+                conclusao = db.query(models.MissaoConcluida).filter(
+                    models.MissaoConcluida.missao_id == missao.id,
+                    models.MissaoConcluida.aluno_id == current_user.id
+                ).first()
+                
+                if conclusao:
+                    if conclusao.validada:
+                        missao_dict["status"] = "aprovada"
+                    else:
+                        missao_dict["status"] = "pendente"
+                
+                result.append(missao_dict)
+            
+            logger.info(f"Returning {len(result)} missions for student {current_user.nome}")
+            return result
+        else:
+            # Professors and managers see all missions from their school - using JOIN
+            logger.info(f"Fetching missions for {current_user.papel}: {current_user.nome} (escola_id: {current_user.escola_id})")
+            
+            missoes = db.query(models.Missao).join(
+                models.User, models.Missao.criador_id == models.User.id
+            ).filter(
+                models.User.escola_id == current_user.escola_id
+            ).all()
+            
+            logger.info(f"Returning {len(missoes)} missions for {current_user.papel} {current_user.nome}")
+            return missoes
+    except Exception as e:
+        logger.error(f"Error fetching missions for user {current_user.nome}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar missões: {str(e)}")
 
 @app.post("/missoes/", response_model=schemas.MissaoResponse)
 def create_missao(missao: schemas.MissaoCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -1045,25 +1060,33 @@ def read_missoes_pendentes(db: Session = Depends(get_db), current_user: models.U
     if current_user.papel not in ['professor', 'gestor', 'admin']:
         raise HTTPException(status_code=403, detail="Apenas professores podem ver missões pendentes")
     
-    # Get pending missions for missions created by this professor
-    pendentes = db.query(models.MissaoConcluida).join(models.Missao).filter(
-        models.MissaoConcluida.validada == False,
-        models.Missao.criador_id == current_user.id
-    ).all()
-    
-    resultado = []
-    for pendente in pendentes:
-        resultado.append({
-            "id": pendente.id,
-            "missao_id": pendente.missao_id,
-            "missao_titulo": pendente.missao.titulo,
-            "aluno_id": pendente.aluno_id,
-            "aluno_nome": pendente.aluno.nome,
-            "aluno_serie": pendente.aluno.serie_nome if pendente.aluno.serie else "Sem série",
-            "data_solicitacao": pendente.data_solicitacao
-        })
-    
-    return resultado
+    try:
+        logger.info(f"Fetching pending missions for {current_user.papel}: {current_user.nome}")
+        
+        # Get pending missions for missions created by this professor
+        pendentes = db.query(models.MissaoConcluida).join(models.Missao).filter(
+            models.MissaoConcluida.validada == False,
+            models.Missao.criador_id == current_user.id
+        ).all()
+        
+        logger.info(f"Found {len(pendentes)} pending missions for {current_user.nome}")
+        
+        resultado = []
+        for pendente in pendentes:
+            resultado.append({
+                "id": pendente.id,
+                "missao_id": pendente.missao_id,
+                "missao_titulo": pendente.missao.titulo,
+                "aluno_id": pendente.aluno_id,
+                "aluno_nome": pendente.aluno.nome,
+                "aluno_serie": pendente.aluno.serie_nome if pendente.aluno.serie else "Sem série",
+                "data_solicitacao": pendente.data_solicitacao
+            })
+        
+        return resultado
+    except Exception as e:
+        logger.error(f"Error fetching pending missions for {current_user.nome}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar missões pendentes: {str(e)}")
 
 @app.get("/missoes/submetidas")
 def read_missoes_submetidas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -1110,26 +1133,34 @@ def read_professor_completed_missions(db: Session = Depends(get_db), current_use
     if current_user.papel not in ['professor', 'gestor', 'admin']:
         raise HTTPException(status_code=403, detail="Apenas professores podem acessar esta rota")
     
-    # Get completed missions for missions created by this professor
-    completed = db.query(models.MissaoConcluida).join(models.Missao).filter(
-        models.Missao.criador_id == current_user.id,
-        models.MissaoConcluida.validada == True
-    ).all()
-    
-    resultado = []
-    for conclusao in completed:
-        resultado.append({
-            "id": conclusao.id,
-            "missao_id": conclusao.missao_id,
-            "missao_titulo": conclusao.missao.titulo,
-            "aluno_id": conclusao.aluno_id,
-            "aluno_nome": conclusao.aluno.nome,
-            "aluno_serie": conclusao.aluno.serie_nome if conclusao.aluno.serie else "Sem série",
-            "data_validacao": conclusao.data_validacao,
-            "validada": conclusao.validada
-        })
-    
-    return resultado
+    try:
+        logger.info(f"Fetching completed missions for {current_user.papel}: {current_user.nome}")
+        
+        # Get completed missions for missions created by this professor
+        completed = db.query(models.MissaoConcluida).join(models.Missao).filter(
+            models.Missao.criador_id == current_user.id,
+            models.MissaoConcluida.validada == True
+        ).all()
+        
+        logger.info(f"Found {len(completed)} completed missions for {current_user.nome}")
+        
+        resultado = []
+        for conclusao in completed:
+            resultado.append({
+                "id": conclusao.id,
+                "missao_id": conclusao.missao_id,
+                "missao_titulo": conclusao.missao.titulo,
+                "aluno_id": conclusao.aluno_id,
+                "aluno_nome": conclusao.aluno.nome,
+                "aluno_serie": conclusao.aluno.serie_nome if conclusao.aluno.serie else "Sem série",
+                "data_validacao": conclusao.data_validacao,
+                "validada": conclusao.validada
+            })
+        
+        return resultado
+    except Exception as e:
+        logger.error(f"Error fetching completed missions for {current_user.nome}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar missões concluídas: {str(e)}")
 
 
 

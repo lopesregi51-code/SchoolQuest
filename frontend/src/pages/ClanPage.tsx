@@ -31,7 +31,6 @@ export const ClanPage: React.FC = () => {
     const { user } = useAuth();
     const [clan, setClan] = useState<Clan | null>(null);
     const [members, setMembers] = useState<ClanMember[]>([]);
-    const [clanMissions, setClanMissions] = useState<any[]>([]);
     const [invites, setInvites] = useState<ClanInvite[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -70,9 +69,6 @@ export const ClanPage: React.FC = () => {
                 const membersRes = await apiClient.get(`/clans/${clanRes.data.id}/members`);
                 setMembers(membersRes.data);
 
-                const missionsRes = await apiClient.get(`/clans/${clanRes.data.id}/missoes`);
-                setClanMissions(missionsRes.data);
-
                 // If leader, fetch progress
                 if (clanRes.data.lider_id === user?.id) {
                     const progressRes = await apiClient.get(`/clans/${clanRes.data.id}/missoes/progress`);
@@ -92,15 +88,7 @@ export const ClanPage: React.FC = () => {
         }
     };
 
-    const handleCompleteMission = async (missionId: number) => {
-        try {
-            await apiClient.post(`/missoes/${missionId}/completar`);
-            alert('Missão enviada para validação!');
-            fetchClanData(); // Refresh to update
-        } catch (error: any) {
-            alert(error.response?.data?.detail || 'Erro ao completar missão');
-        }
-    };
+
 
     const searchUsers = async () => {
         try {
@@ -342,38 +330,7 @@ export const ClanPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Clan Missions */}
-                                <div className="bg-[#202024] rounded-2xl border border-gray-800 p-6">
-                                    <h3 className="text-lg font-medium text-white mb-6 flex items-center gap-2">
-                                        <Shield className="w-5 h-5 text-gray-400" />
-                                        Missões Ativas
-                                    </h3>
-                                    {clanMissions.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500 bg-[#121214] rounded-xl border border-gray-800 border-dashed">
-                                            Nenhuma missão ativa no momento
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {clanMissions.map(mission => (
-                                                <div key={mission.id} className="bg-[#121214] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-medium text-white">{mission.titulo}</h4>
-                                                        <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded font-medium">
-                                                            +{mission.moedas} Moedas
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-400 leading-relaxed mb-3">{mission.descricao}</p>
-                                                    <button
-                                                        onClick={() => handleCompleteMission(mission.id)}
-                                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors text-sm"
-                                                    >
-                                                        Completar Missão
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+
 
                                 {/* Leader Progress View */}
                                 {clan.lider_id === user?.id && missionProgress.length > 0 && (
