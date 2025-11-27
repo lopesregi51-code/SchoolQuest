@@ -92,6 +92,16 @@ export const ClanPage: React.FC = () => {
         }
     };
 
+    const handleCompleteMission = async (missionId: number) => {
+        try {
+            await apiClient.post(`/missoes/${missionId}/completar`);
+            alert('Missão enviada para validação!');
+            fetchClanData(); // Refresh to update
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao completar missão');
+        }
+    };
+
     const searchUsers = async () => {
         try {
             const res = await apiClient.get('/users/search', { params: { q: searchQuery } });
@@ -352,7 +362,13 @@ export const ClanPage: React.FC = () => {
                                                             +{mission.moedas} Moedas
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm text-gray-400 leading-relaxed">{mission.descricao}</p>
+                                                    <p className="text-sm text-gray-400 leading-relaxed mb-3">{mission.descricao}</p>
+                                                    <button
+                                                        onClick={() => handleCompleteMission(mission.id)}
+                                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors text-sm"
+                                                    >
+                                                        Completar Missão
+                                                    </button>
                                                 </div>
                                             ))}
                                         </div>

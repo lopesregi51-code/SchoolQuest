@@ -628,7 +628,8 @@ def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
         "avatar_url": current_user.avatar_url,
         "bio": current_user.bio,
         "interesses": current_user.interesses,
-        "escola_nome": current_user.escola.nome if current_user.escola else None
+        "escola_nome": current_user.escola.nome if current_user.escola else None,
+        "qr_token": current_user.qr_token
     }
     return user_dict
 
@@ -688,7 +689,7 @@ async def process_avatar_image(file: UploadFile, max_size_mb: int = 5, max_dim: 
 def save_avatar_for_user(user: models.User, contents: bytes, extension: str, db: Session):
     """Saves avatar file and updates user record."""
     # Create uploads directory
-    upload_dir = "uploads/avatars"
+    upload_dir = "media/avatars"
     os.makedirs(upload_dir, exist_ok=True)
     
     # Generate unique filename
@@ -929,7 +930,37 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
             ).all()
             missoes.extend(clan_missions)
         
-        return missoes
+        # Add status for each mission
+        result = []
+        for missao in missoes:
+            missao_dict = {
+                "id": missao.id,
+                "titulo": missao.titulo,
+                "descricao": missao.descricao,
+                "pontos": missao.pontos,
+                "moedas": missao.moedas,
+                "categoria": missao.categoria,
+                "criador_id": missao.criador_id,
+                "tipo": missao.tipo,
+                "clan_id": missao.clan_id,
+                "status": "disponivel"  # default
+            }
+            
+            # Check if student has completed this mission
+            conclusao = db.query(models.MissaoConcluida).filter(
+                models.MissaoConcluida.missao_id == missao.id,
+                models.MissaoConcluida.aluno_id == current_user.id
+            ).first()
+            
+            if conclusao:
+                if conclusao.validada:
+                    missao_dict["status"] = "aprovada"
+                else:
+                    missao_dict["status"] = "pendente"
+            
+            result.append(missao_dict)
+        
+        return result
     else:
         # Professors and managers see all missions from their school
         missoes = db.query(models.Missao).filter(

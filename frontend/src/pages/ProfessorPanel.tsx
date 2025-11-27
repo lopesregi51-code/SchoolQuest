@@ -13,7 +13,7 @@ export const ProfessorPanel: React.FC = () => {
     const [validatingMissionId, setValidatingMissionId] = useState<number | null>(null);
 
     const [myMissions, setMyMissions] = useState<any[]>([]);
-
+    const [pendingMissions, setPendingMissions] = useState<any[]>([]);
     const [completedMissions, setCompletedMissions] = useState<any[]>([]);
     const [clans, setClans] = useState<any[]>([]);
     const [formData, setFormData] = useState({
@@ -29,6 +29,7 @@ export const ProfessorPanel: React.FC = () => {
 
     useEffect(() => {
         fetchMyMissions();
+        fetchPendingMissions();
         fetchCompletedMissions();
         fetchClans();
 
@@ -48,6 +49,15 @@ export const ProfessorPanel: React.FC = () => {
         }
     };
 
+    const fetchPendingMissions = async () => {
+        try {
+            const response = await apiClient.get('/missoes/pendentes');
+            setPendingMissions(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar missões pendentes', error);
+        }
+    };
+
     const fetchCompletedMissions = async () => {
         try {
             const response = await apiClient.get('/missoes/professor/concluidas');
@@ -57,29 +67,18 @@ export const ProfessorPanel: React.FC = () => {
         }
     };
 
-    const handleAssignMission = async (missionId: number) => {
-        const email = prompt("Digite o email do aluno para atribuir esta missão:");
-        if (!email) return;
-
+    const handleValidateMission = async (submissaoId: number, aprovado: boolean) => {
         try {
-            const searchRes = await apiClient.get(`/users/search?q=${email}`);
-            const students = searchRes.data;
-            const student = students.find((s: any) => s.email === email);
-
-            if (!student) {
-                alert('Aluno não encontrado com este email.');
-                return;
-            }
-
-            await apiClient.post('/missoes/atribuir', {
-                missao_id: missionId,
-                aluno_id: student.id
-            });
-            alert(`Missão atribuída para ${student.nome}!`);
+            await apiClient.post(`/missoes/validar/${submissaoId}?aprovado=${aprovado}`);
+            alert(aprovado ? 'Missão aprovada!' : 'Missão rejeitada!');
+            fetchPendingMissions();
+            fetchCompletedMissions();
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Erro ao atribuir missão');
+            alert(error.response?.data?.detail || 'Erro ao validar missão');
         }
     };
+
+
 
     const fetchMyMissions = async () => {
         try {
@@ -415,15 +414,7 @@ export const ProfessorPanel: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            {mission.tipo === 'individual' && (
-                                                <button
-                                                    onClick={() => handleAssignMission(mission.id)}
-                                                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm transition-colors"
-                                                    title="Atribuir a Aluno"
-                                                >
-                                                    Atribuir
-                                                </button>
-                                            )}
+
                                             <button
                                                 onClick={() => handleDeleteMission(mission.id)}
                                                 className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
@@ -441,6 +432,53 @@ export const ProfessorPanel: React.FC = () => {
                                             >
                                                 <QrCode className="w-5 h-5" />
                                             </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+
+
+                    {/* Pending Missions */}
+                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <CheckCircle className="w-6 h-6 text-yellow-400" />
+                                Missões Pendentes de Validação
+                            </h2>
+                        </div>
+                        {pendingMissions.length === 0 ? (
+                            <p className="text-gray-400">Nenhuma missão pendente de validação.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {pendingMissions.map((pending) => (
+                                    <div key={pending.id} className="bg-gray-700 p-4 rounded-lg border border-yellow-600/30">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-lg">{pending.missao_titulo}</h3>
+                                                <p className="text-sm text-gray-300">
+                                                    Aluno: {pending.aluno_nome} ({pending.aluno_serie})
+                                                </p>
+                                                <p className="text-xs text-gray-400">
+                                                    Enviada em: {new Date(pending.data_solicitacao).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleValidateMission(pending.id, true)}
+                                                    className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold text-sm transition-colors"
+                                                >
+                                                    Aprovar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleValidateMission(pending.id, false)}
+                                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-sm transition-colors"
+                                                >
+                                                    Rejeitar
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
