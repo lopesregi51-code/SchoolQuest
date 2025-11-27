@@ -3,6 +3,7 @@ CSV processing handlers for bulk import
 """
 import pandas as pd
 import io
+from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from . import models, auth
@@ -123,13 +124,25 @@ def process_gestores_csv(df: pd.DataFrame, db: Session) -> dict:
     }
 
 
-def process_usuarios_csv(df: pd.DataFrame, db: Session) -> dict:
-    """Process users (students/professors) CSV file"""
+def process_usuarios_csv(df: pd.DataFrame, db: Session, escola_id_filter: Optional[int] = None) -> dict:
+    """Process users (students/professors) CSV file
+    
+    Args:
+        df: DataFrame with user data
+        db: Database session
+        escola_id_filter: If provided (for managers), all users will be created for this school only
+    """
     created = []
     errors = []
     
-    # Validate columns
-    required_cols = ['nome', 'email', 'senha', 'papel', 'escola_nome']
+    # Validate columns based on whether escola_id_filter is provided
+    if escola_id_filter:
+        # Manager mode: escola_nome is not required (we use escola_id_filter)
+        required_cols = ['nome', 'email', 'senha', 'papel']
+    else:
+        # Admin mode: escola_nome is required
+        required_cols = ['nome', 'email', 'senha', 'papel', 'escola_nome']
+    
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
         raise HTTPException(400, f"CSV deve conter colunas: {', '.join(missing)}")
@@ -140,6 +153,13 @@ def process_usuarios_csv(df: pd.DataFrame, db: Session) -> dict:
     if 'disciplina' not in df.columns:
         df['disciplina'] = ''
     
+    # Get escola object if escola_id_filter is provided
+    escola_filtrada = None
+    if escola_id_filter:
+        escola_filtrada = db.query(models.Escola).filter(models.Escola.id == escola_id_filter).first()
+        if not escola_filtrada:
+            raise HTTPException(400, "Escola do gestor não encontrada")
+    
     for idx, row in df.iterrows():
         try:
             # Parse fields
@@ -147,13 +167,27 @@ def process_usuarios_csv(df: pd.DataFrame, db: Session) -> dict:
             email = str(row['email']).strip().lower() if not pd.isna(row['email']) else ''
             senha = str(row['senha']).strip() if not pd.isna(row['senha']) else ''
             papel = str(row['papel']).strip().lower() if not pd.isna(row['papel']) else ''
-            escola_nome = str(row['escola_nome']).strip() if not pd.isna(row['escola_nome']) else ''
             serie_nome = str(row['serie']).strip() if not pd.isna(row['serie']) else ''
             disciplina = str(row['disciplina']).strip() if not pd.isna(row['disciplina']) else ''
             
+            # Determine escola
+            if escola_id_filter:
+                # Manager mode: use filtered escola
+                escola = escola_filtrada
+            else:
+                # Admin mode: get escola from CSV
+                escola_nome = str(row['escola_nome']).strip() if not pd.isna(row['escola_nome']) else ''
+                if not escola_nome:
+                    errors.append(f"Linha {idx+2}: escola_nome obrigatório")
+                    continue
+                escola = db.query(models.Escola).filter(models.Escola.nome == escola_nome).first()
+                if not escola:
+                    errors.append(f"Linha {idx+2}: Escola '{escola_nome}' não encontrada")
+                    continue
+            
             # Validate required
-            if not nome or not email or not senha or not papel or not escola_nome:
-                errors.append(f"Linha {idx+2}: Campos obrigatórios: nome, email, senha, papel, escola_nome")
+            if not nome or not email or not senha or not papel:
+                errors.append(f"Linha {idx+2}: Campos obrigatórios: nome, email, senha, papel")
                 continue
             
             # Validate papel
@@ -170,12 +204,6 @@ def process_usuarios_csv(df: pd.DataFrame, db: Session) -> dict:
             existing = db.query(models.User).filter(models.User.email == email).first()
             if existing:
                 errors.append(f"Linha {idx+2}: Email '{email}' já cadastrado")
-                continue
-            
-            # Find school
-            escola = db.query(models.Escola).filter(models.Escola.nome == escola_nome).first()
-            if not escola:
-                errors.append(f"Linha {idx+2}: Escola '{escola_nome}' não encontrada")
                 continue
             
             # Validate aluno requirements

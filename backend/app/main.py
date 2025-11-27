@@ -346,15 +346,28 @@ async def upload_csv(
 ):
     """
     Upload CSV para cadastro em massa.
-    Tipos aceitos: escolas, gestores, usuarios
+    - Admin pode importar: escolas, gestores, usuarios
+    - Gestor pode importar: usuarios (apenas da sua escola)
     """
-    if current_user.papel != 'admin':
-        raise HTTPException(status_code=403, detail="Apenas administradores podem fazer upload de CSV")
+    # Verificar permissões
+    if current_user.papel not in ['admin', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas administradores e gestores podem fazer upload de CSV")
     
     # Validate type
     valid_tipos = ["escolas", "gestores", "usuarios"]
     if tipo not in valid_tipos:
         raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {', '.join(valid_tipos)}")
+    
+    # Gestores só podem importar usuarios
+    if current_user.papel == 'gestor' and tipo != 'usuarios':
+        raise HTTPException(
+            status_code=403, 
+            detail="Gestores podem importar apenas 'usuarios' (alunos e professores)"
+        )
+    
+    # Validar que gestor tem escola
+    if current_user.papel == 'gestor' and not current_user.escola_id:
+        raise HTTPException(status_code=400, detail="Gestor não está associado a uma escola")
     
     # Validate file type
     if not file.filename.endswith('.csv'):
@@ -365,7 +378,7 @@ async def upload_csv(
         contents = await file.read()
         df = pd.read_csv(io.BytesIO(contents))
         
-        logger.info(f"Processing CSV upload: type={tipo}, rows={len(df)}, user={current_user.email}")
+        logger.info(f"Processing CSV upload: type={tipo}, rows={len(df)}, user={current_user.email}, papel={current_user.papel}")
         
         # Process based on type
         if tipo == "escolas":
@@ -373,7 +386,11 @@ async def upload_csv(
         elif tipo == "gestores":
             result = csv_handler.process_gestores_csv(df, db)
         elif tipo == "usuarios":
-            result = csv_handler.process_usuarios_csv(df, db)
+            # Para gestores, passar escola_id_filter
+            if current_user.papel == 'gestor':
+                result = csv_handler.process_usuarios_csv(df, db, escola_id_filter=current_user.escola_id)
+            else:
+                result = csv_handler.process_usuarios_csv(df, db)
         
         logger.info(f"CSV processed: success={result['success']}, errors={result['errors']}")
         return result
@@ -391,15 +408,30 @@ def download_csv_template(
     tipo: str,
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Download template CSV para upload"""
-    if current_user.papel != 'admin':
-        raise HTTPException(status_code=403, detail="Apenas administradores podem baixar templates")
+    """Download template CSV para upload
+    - Admin pode baixar: escolas, gestores, usuarios
+    - Gestor pode baixar: usuarios
+    """
+    # Verificar permissões
+    if current_user.papel not in ['admin', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas administradores e gestores podem baixar templates")
+    
+    # Gestores só podem baixar template de usuarios
+    if current_user.papel == 'gestor' and tipo != 'usuarios':
+        raise HTTPException(
+            status_code=403, 
+            detail="Gestores podem baixar apenas o template de 'usuarios'"
+        )
     
     templates = {
         "escolas": "nome\nEscola Exemplo\n",
         "gestores": "nome,email,senha,escola_nome\nCarlos Silva,carlos@escola.com,senha123,Escola Exemplo\n",
-        "usuarios": "nome,email,senha,papel,serie,disciplina,escola_nome\nJoão Aluno,joao@aluno.com,senha123,aluno,5º Ano,,Escola Exemplo\nProf. Ana,ana@prof.com,profsenha,professor,,,Matemática,Escola Exemplo\n"
+        "usuarios": "nome,email,senha,papel,serie,disciplina,escola_nome\nJoão Aluno,joao@aluno.com,senha123,aluno,5º Ano,,Escola Exemplo\nProf. Ana,ana@prof.com,profsenha,professor,,Matemática,Escola Exemplo\n"
     }
+    
+    # Template especial para gestores (sem coluna escola_nome)
+    if current_user.papel == 'gestor' and tipo == 'usuarios':
+        templates["usuarios"] = "nome,email,senha,papel,serie,disciplina\nJoão Aluno,joao@aluno.com,senha123,aluno,5º Ano,\nProf. Ana,ana@prof.com,profsenha,professor,,Matemática\n"
     
     if tipo not in templates:
         raise HTTPException(status_code=404, detail="Template não encontrado")
