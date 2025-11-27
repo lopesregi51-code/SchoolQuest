@@ -959,6 +959,34 @@ def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: m
     if current_user.papel != 'admin' and current_user.papel != 'gestor' and missao.criador_id != current_user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para excluir esta missão")
     
+    db.delete(missao)
+    db.commit()
+    logger.info(f"Mission deleted: {missao.titulo} by {current_user.nome}")
+    return {"message": "Missão excluída com sucesso!"}
+
+@app.post("/missoes/{missao_id}/completar")
+def completar_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Aluno marca missão como concluída (pendente de validação)."""
+    if current_user.papel != 'aluno':
+        raise HTTPException(status_code=403, detail="Apenas alunos podem completar missões")
+    
+    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
+    if not missao:
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+    
+    # Check if already completed
+    existing = db.query(models.MissaoConcluida).filter(
+        models.MissaoConcluida.missao_id == missao_id,
+        models.MissaoConcluida.aluno_id == current_user.id
+    ).first()
+    
+    if existing:
+        if existing.validada:
+            raise HTTPException(status_code=400, detail="Você já completou esta missão")
+        else:
+            raise HTTPException(status_code=400, detail="Esta missão já está pendente de validação")
+    
+    # Create completion record
     conclusao = models.MissaoConcluida(missao_id=missao_id, aluno_id=current_user.id)
     db.add(conclusao)
     
@@ -980,26 +1008,36 @@ def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: m
     logger.info(f"Mission completed: {missao.titulo} by {current_user.nome}")
     return {"message": "Missão enviada para validação!"}
 
-@app.get("/missoes/submetidas")
-def read_missoes_submetidas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    if current_user.papel not in ['professor', 'gestor']:
-        raise HTTPException(status_code=403, detail="Apenas professores podem ver submissões")
+@app.get("/missoes/pendentes")
+def read_missoes_pendentes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Listar missões pendentes de validação (para professor)."""
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem ver missões pendentes")
     
-    submissoes = db.query(models.MissaoConcluida).join(models.Missao).filter(
+    # Get pending missions for missions created by this professor
+    pendentes = db.query(models.MissaoConcluida).join(models.Missao).filter(
         models.MissaoConcluida.validada == False,
         models.Missao.criador_id == current_user.id
     ).all()
     
     resultado = []
-    for sub in submissoes:
+    for pendente in pendentes:
         resultado.append({
-            "id": sub.id,
-            "aluno_nome": sub.aluno.nome,
-            "aluno_serie": sub.aluno.serie_nome,
-            "missao_titulo": sub.missao.titulo,
-            "data_solicitacao": sub.data_solicitacao
+            "id": pendente.id,
+            "missao_id": pendente.missao_id,
+            "missao_titulo": pendente.missao.titulo,
+            "aluno_id": pendente.aluno_id,
+            "aluno_nome": pendente.aluno.nome,
+            "aluno_serie": pendente.aluno.serie_nome if pendente.aluno.serie else "Sem série",
+            "data_solicitacao": pendente.data_solicitacao
         })
+    
     return resultado
+
+@app.get("/missoes/submetidas")
+def read_missoes_submetidas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """DEPRECATED: Use /missoes/pendentes instead."""
+    return read_missoes_pendentes(db, current_user)
 
 @app.post("/missoes/validar/{submissao_id}")
 def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

@@ -75,7 +75,7 @@ export const StudentDashboard: React.FC = () => {
 
     const completeMission = async (missionId: number) => {
         try {
-            await apiClient.post(`/missoes/${missionId}/concluir`);
+            await apiClient.post(`/missoes/${missionId}/completar`);
             alert('Missão enviada para validação!');
             fetchMissions(); // Refresh to update status
         } catch (error: any) {
