@@ -1886,3 +1886,45 @@ def get_top_schools(db: Session = Depends(get_db), current_user: models.User = D
         
     result.sort(key=lambda x: x['total_xp'], reverse=True)
     return result[:10]
+
+@app.post("/admin/clear-all")
+def clear_all_data(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Limpar todos os dados do sistema (Zona de Perigo)."""
+    if current_user.papel != 'admin':
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    try:
+        # Ordem de deleção para evitar Foreign Key Violation
+        
+        # 1. Tabelas de associação e dependentes finais
+        db.query(models.MissaoConcluida).delete()
+        db.query(models.MissaoAtribuida).delete()
+        db.query(models.ClanInvite).delete()
+        db.query(models.ClanMember).delete()
+        db.query(models.UserItem).delete()
+        db.query(models.UserConquista).delete()
+        db.query(models.Transacao).delete()
+        
+        # 2. Tabelas principais dependentes
+        db.query(models.Missao).delete()
+        db.query(models.Clan).delete()
+        
+        # 3. Usuários (exceto o admin atual)
+        db.query(models.User).filter(models.User.id != current_user.id).delete()
+        
+        # 4. Escolas e Séries
+        if current_user.escola_id:
+            db.query(models.Serie).filter(models.Serie.escola_id != current_user.escola_id).delete()
+            db.query(models.Escola).filter(models.Escola.id != current_user.escola_id).delete()
+        else:
+            db.query(models.Serie).delete()
+            db.query(models.Escola).delete()
+            
+        db.commit()
+        logger.info(f"All data cleared by {current_user.email}")
+        return {"message": "Todos os dados foram limpos com sucesso!"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error clearing data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao limpar dados: {str(e)}")
