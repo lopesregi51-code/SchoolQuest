@@ -34,32 +34,45 @@ class PostResponse(BaseModel):
 @router.get("/", response_model=List[PostResponse])
 def get_posts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get all posts from the user's school."""
-    if not current_user.escola_id:
-        return []
-    
-    posts = db.query(MuralPost).filter(
-        MuralPost.escola_id == current_user.escola_id
-    ).order_by(MuralPost.data_criacao.desc()).all()
-    
-    result = []
-    for post in posts:
-        liked_by_me = any(like.user_id == current_user.id for like in post.likes)
-        liked_by_names = [like.user.nome for like in post.likes]
+    try:
+        if not current_user.escola_id:
+            return []
         
-        result.append({
-            "id": post.id,
-            "user_id": post.user_id,
-            "user_nome": post.user.nome,
-            "escola_id": post.escola_id,
-            "texto": post.texto,
-            "imagem_url": post.imagem_url,
-            "data_criacao": post.data_criacao.strftime("%d/%m/%Y %H:%M"),
-            "likes_count": len(post.likes),
-            "liked_by_me": liked_by_me,
-            "liked_by": liked_by_names
-        })
-    
-    return result
+        posts = db.query(MuralPost).filter(
+            MuralPost.escola_id == current_user.escola_id
+        ).order_by(MuralPost.data_criacao.desc()).all()
+        
+        result = []
+        for post in posts:
+            # Safely access relationships
+            user_nome = post.user.nome if post.user else "Usuário Desconhecido"
+            
+            liked_by_me = False
+            liked_by_names = []
+            
+            if post.likes:
+                liked_by_me = any(like.user_id == current_user.id for like in post.likes)
+                liked_by_names = [like.user.nome for like in post.likes if like.user]
+            
+            result.append({
+                "id": post.id,
+                "user_id": post.user_id,
+                "user_nome": user_nome,
+                "escola_id": post.escola_id,
+                "texto": post.texto,
+                "imagem_url": post.imagem_url,
+                "data_criacao": post.data_criacao.strftime("%d/%m/%Y %H:%M") if post.data_criacao else "",
+                "likes_count": len(post.likes) if post.likes else 0,
+                "liked_by_me": liked_by_me,
+                "liked_by": liked_by_names
+            })
+        
+        return result
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching mural posts: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar posts: {str(e)}")
 
 @router.post("/", response_model=PostResponse)
 async def create_post(

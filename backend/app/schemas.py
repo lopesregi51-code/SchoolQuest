@@ -58,7 +58,7 @@ class UserResponse(UserBase):
     moedas: int
     xp: int
     nivel: int
-    streak_count: int = 0
+    streak_count: Optional[int] = 0
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     interesses: Optional[str] = None
@@ -140,6 +140,21 @@ class UserItemResponse(BaseModel):
     equipado: bool
     data_obtencao: datetime
     
+    class Config:
+        orm_mode = True
+
+class PurchaseResponse(BaseModel):
+    id: int
+    user_id: int
+    user_nome: Optional[str] = None
+    item_id: Optional[int] = None
+    item_nome: Optional[str] = None
+    reward_id: Optional[int] = None
+    reward_nome: Optional[str] = None
+    custo_pago: int
+    data_compra: datetime
+    status: str
+
     class Config:
         orm_mode = True
 

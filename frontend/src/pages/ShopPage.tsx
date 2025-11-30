@@ -44,7 +44,7 @@ export const ShopPage: React.FC = () => {
 
         try {
             await apiClient.post(`/shop/buy/${item.id}`);
-            alert(`Compra realizada! Você adquiriu: ${item.nome}`);
+            alert(`Solicitação de compra enviada! Aguarde a aprovação do gestor.`);
             fetchRewards();
             window.location.reload();
         } catch (error: any) {

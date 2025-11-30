@@ -51,10 +51,16 @@ export const ProfessorPanel: React.FC = () => {
 
     const fetchPendingMissions = async () => {
         try {
+            console.log('Fetching pending missions...');
             const response = await apiClient.get('/missoes/pendentes');
+            console.log('Pending missions response:', response.data);
             setPendingMissions(response.data);
-        } catch (error) {
-            console.error('Erro ao buscar missões pendentes', error);
+            if (response.data.length === 0) {
+                console.log('No pending missions found');
+            }
+        } catch (error: any) {
+            console.error('Erro ao buscar missões pendentes:', error);
+            console.error('Error details:', error.response?.data);
         }
     };
 

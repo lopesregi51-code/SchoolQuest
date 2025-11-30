@@ -61,8 +61,12 @@ class User(Base):
     
     escola = relationship("Escola", back_populates="usuarios")
     serie_obj = relationship("Serie", back_populates="usuarios")
-    itens = relationship("UserItem", back_populates="user")
-    conquistas = relationship("UserConquista", back_populates="user")
+    itens = relationship("UserItem", back_populates="user", cascade="all, delete-orphan")
+    conquistas = relationship("UserConquista", back_populates="user", cascade="all, delete-orphan")
+    purchases = relationship("Purchase", back_populates="user", cascade="all, delete-orphan")
+    mural_posts = relationship("MuralPost", back_populates="user", cascade="all, delete-orphan")
+    device_tokens = relationship("DeviceToken", back_populates="user", cascade="all, delete-orphan")
+    clan_memberships = relationship("ClanMember", back_populates="user", cascade="all, delete-orphan")
     
     criado_em = Column(DateTime, default=datetime.utcnow)
 
@@ -200,7 +204,7 @@ class ClanMember(Base):
     entrou_em = Column(DateTime, default=datetime.utcnow)
 
     clan = relationship("Clan", back_populates="membros")
-    user = relationship("User")
+    user = relationship("User", back_populates="clan_memberships")
 
 class ClanInvite(Base):
     __tablename__ = "clan_invites"
@@ -235,13 +239,15 @@ class Purchase(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    reward_id = Column(Integer, ForeignKey("rewards.id"))
+    reward_id = Column(Integer, ForeignKey("rewards.id"), nullable=True)
+    item_id = Column(Integer, ForeignKey("itens.id"), nullable=True)
     data_compra = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="pendente") # pendente, entregue, cancelado
     custo_pago = Column(Integer)
 
-    user = relationship("User")
+    user = relationship("User", back_populates="purchases")
     reward = relationship("Reward")
+    item = relationship("Item")
 
 class MuralPost(Base):
     __tablename__ = "mural_posts"
@@ -253,7 +259,7 @@ class MuralPost(Base):
     imagem_url = Column(String, nullable=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User")
+    user = relationship("User", back_populates="mural_posts")
     escola = relationship("Escola")
     likes = relationship("PostLike", back_populates="post", cascade="all, delete-orphan")
 
@@ -280,7 +286,7 @@ class DeviceToken(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User")
+    user = relationship("User", back_populates="device_tokens")
 
 class ClanMessage(Base):
     """Modelo para mensagens de chat do clã"""

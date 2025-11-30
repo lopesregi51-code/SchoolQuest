@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image, LogOut, BarChart2 } from 'lucide-react';
+import { Users, Upload, Trash2, Plus, Shield, ShoppingBag, Edit, X, Save, Image, LogOut, BarChart2, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -38,6 +38,15 @@ interface Serie {
     criado_em: string;
 }
 
+interface Purchase {
+    id: number;
+    user_nome: string;
+    item_nome: string;
+    custo_pago: number;
+    data_compra: string;
+    status: string;
+}
+
 export const ManagerPanel: React.FC = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -66,6 +75,10 @@ export const ManagerPanel: React.FC = () => {
     const [newSerie, setNewSerie] = useState({ nome: '' });
     const [showSeriesManager, setShowSeriesManager] = useState(false);
 
+    // Shop Approvals State
+    const [pendingPurchases, setPendingPurchases] = useState<Purchase[]>([]);
+    const [showApprovals, setShowApprovals] = useState(false);
+
     // User Edit State
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -76,7 +89,38 @@ export const ManagerPanel: React.FC = () => {
         fetchExtraStats();
         fetchRewards();
         fetchSeries();
+        fetchPendingPurchases();
     }, []);
+
+    const fetchPendingPurchases = async () => {
+        try {
+            const res = await apiClient.get('/loja/compras/pendentes');
+            setPendingPurchases(res.data);
+        } catch (error) {
+            console.error("Error fetching pending purchases", error);
+        }
+    };
+
+    const handleApprovePurchase = async (id: number) => {
+        try {
+            await apiClient.post(`/loja/compras/${id}/aprovar`);
+            alert('Compra aprovada!');
+            fetchPendingPurchases();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao aprovar');
+        }
+    };
+
+    const handleRejectPurchase = async (id: number) => {
+        if (!confirm('Rejeitar esta compra e devolver as moedas?')) return;
+        try {
+            await apiClient.post(`/loja/compras/${id}/rejeitar`);
+            alert('Compra rejeitada!');
+            fetchPendingPurchases();
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao rejeitar');
+        }
+    };
 
     const fetchRewards = async () => {
         try {
@@ -354,11 +398,65 @@ export const ManagerPanel: React.FC = () => {
 
             {/* Shop Manager Section */}
             {showShopManager && (
-                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8 animate-fade-in">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <ShoppingBag className="w-6 h-6 text-purple-400" />
-                        Gerenciar Recompensas
-                    </h2>
+                <div className="mb-8 animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <ShoppingBag className="w-6 h-6 text-purple-400" />
+                            Gerenciar Loja
+                        </h2>
+                        <button
+                            onClick={() => setShowApprovals(!showApprovals)}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors relative"
+                        >
+                            <CheckCircle className="w-5 h-5" />
+                            Aprovações
+                            {pendingPurchases.length > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                    {pendingPurchases.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Approvals Section */}
+                    {showApprovals && (
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600 mb-6 animate-fade-in">
+                            <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-green-400">
+                                <CheckCircle className="w-5 h-5" />
+                                Aprovações Pendentes
+                            </h3>
+
+                            {pendingPurchases.length === 0 ? (
+                                <p className="text-gray-400 text-sm">Nenhuma compra pendente.</p>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {pendingPurchases.map(p => (
+                                        <div key={p.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center border border-gray-600">
+                                            <div>
+                                                <p className="font-bold">{p.item_nome}</p>
+                                                <p className="text-xs text-gray-300">Aluno: <span className="text-white font-bold">{p.user_nome}</span></p>
+                                                <p className="text-xs text-gray-400">Custo: {p.custo_pago} moedas • {new Date(p.data_compra).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleApprovePurchase(p.id)}
+                                                    className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs font-bold flex items-center gap-1"
+                                                >
+                                                    <CheckCircle className="w-3 h-3" /> Aprovar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectPurchase(p.id)}
+                                                    className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-xs font-bold flex items-center gap-1"
+                                                >
+                                                    <XCircle className="w-3 h-3" /> Rejeitar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid md:grid-cols-3 gap-8">
                         {/* Form */}
@@ -494,25 +592,28 @@ export const ManagerPanel: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Relatórios */}
-            {reports && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
-                        <h3 className="text-gray-400 text-sm mb-2">Total de Alunos</h3>
-                        <p className="text-4xl font-bold text-blue-400">{reports.total_alunos}</p>
+            {
+                reports && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+                            <h3 className="text-gray-400 text-sm mb-2">Total de Alunos</h3>
+                            <p className="text-4xl font-bold text-blue-400">{reports.total_alunos}</p>
+                        </div>
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+                            <h3 className="text-gray-400 text-sm mb-2">Missões Criadas</h3>
+                            <p className="text-4xl font-bold text-purple-400">{reports.total_missoes}</p>
+                        </div>
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+                            <h3 className="text-gray-400 text-sm mb-2">Média de XP</h3>
+                            <p className="text-4xl font-bold text-yellow-400">{reports.media_xp}</p>
+                        </div>
                     </div>
-                    <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
-                        <h3 className="text-gray-400 text-sm mb-2">Missões Criadas</h3>
-                        <p className="text-4xl font-bold text-purple-400">{reports.total_missoes}</p>
-                    </div>
-                    <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
-                        <h3 className="text-gray-400 text-sm mb-2">Média de XP</h3>
-                        <p className="text-4xl font-bold text-yellow-400">{reports.media_xp}</p>
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* Top Alunos */}
@@ -567,22 +668,24 @@ export const ManagerPanel: React.FC = () => {
             </div>
 
             {/* Participation Stats */}
-            {participationStats.length > 0 && (
-                <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
-                    <h2 className="text-xl font-bold mb-4 flex items-center">
-                        <span className="mr-2">📊</span> Engajamento por Série (Média XP)
-                    </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {participationStats.map((stat, index) => (
-                            <div key={index} className="bg-gray-700/50 p-4 rounded-lg text-center">
-                                <h3 className="font-bold text-lg mb-1">{stat.serie}</h3>
-                                <p className="text-2xl font-bold text-yellow-400">{stat.media_xp}</p>
-                                <p className="text-xs text-gray-400">XP Médio</p>
-                            </div>
-                        ))}
+            {
+                participationStats.length > 0 && (
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
+                        <h2 className="text-xl font-bold mb-4 flex items-center">
+                            <span className="mr-2">📊</span> Engajamento por Série (Média XP)
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {participationStats.map((stat, index) => (
+                                <div key={index} className="bg-gray-700/50 p-4 rounded-lg text-center">
+                                    <h3 className="font-bold text-lg mb-1">{stat.serie}</h3>
+                                    <p className="text-2xl font-bold text-yellow-400">{stat.media_xp}</p>
+                                    <p className="text-xs text-gray-400">XP Médio</p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* Importar CSV */}
@@ -817,70 +920,73 @@ export const ManagerPanel: React.FC = () => {
 
 
             {/* Edit User Modal */}
-            {showEditUserModal && editingUser && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-xl w-full max-w-md border border-gray-700">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="font-bold text-lg">Editar Usuário</h3>
-                            <button onClick={() => setShowEditUserModal(false)}><X className="w-5 h-5" /></button>
+            {
+                showEditUserModal && editingUser && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gray-800 rounded-xl w-full max-w-md border border-gray-700">
+                            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                                <h3 className="font-bold text-lg">Editar Usuário</h3>
+                                <button onClick={() => setShowEditUserModal(false)}><X className="w-5 h-5" /></button>
+                            </div>
+                            <form onSubmit={handleUpdateUser} className="p-4 space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Nome</label>
+                                    <input
+                                        type="text"
+                                        value={editFormData.nome || ''}
+                                        onChange={e => setEditFormData({ ...editFormData, nome: e.target.value })}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={editFormData.email || ''}
+                                        onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Papel</label>
+                                    <select
+                                        value={editFormData.papel || 'aluno'}
+                                        onChange={e => setEditFormData({ ...editFormData, papel: e.target.value })}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                    >
+                                        <option value="aluno">Aluno</option>
+                                        <option value="professor">Professor</option>
+                                        <option value="gestor">Gestor</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Nova Senha (deixe em branco para não alterar)</label>
+                                    <input
+                                        type="password"
+                                        placeholder="Nova senha (opcional)"
+                                        value={editFormData.senha || ''}
+                                        onChange={e => setEditFormData({ ...editFormData, senha: e.target.value })}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold flex justify-center items-center gap-2">
+                                        <Save className="w-4 h-4" /> Salvar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDeleteUser}
+                                        className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded font-bold flex justify-center items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" /> Excluir
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={handleUpdateUser} className="p-4 space-y-4">
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Nome</label>
-                                <input
-                                    type="text"
-                                    value={editFormData.nome || ''}
-                                    onChange={e => setEditFormData({ ...editFormData, nome: e.target.value })}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Email</label>
-                                <input
-                                    type="email"
-                                    value={editFormData.email || ''}
-                                    onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Papel</label>
-                                <select
-                                    value={editFormData.papel || 'aluno'}
-                                    onChange={e => setEditFormData({ ...editFormData, papel: e.target.value })}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                                >
-                                    <option value="aluno">Aluno</option>
-                                    <option value="professor">Professor</option>
-                                    <option value="gestor">Gestor</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Nova Senha (deixe em branco para não alterar)</label>
-                                <input
-                                    type="password"
-                                    placeholder="Nova senha (opcional)"
-                                    value={editFormData.senha || ''}
-                                    onChange={e => setEditFormData({ ...editFormData, senha: e.target.value })}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                                />
-                            </div>
-                            <div className="flex gap-2">
-                                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold flex justify-center items-center gap-2">
-                                    <Save className="w-4 h-4" /> Salvar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteUser}
-                                    className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded font-bold flex justify-center items-center gap-2"
-                                >
-                                    <Trash2 className="w-4 h-4" /> Excluir
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+        </div >
     );
 };
