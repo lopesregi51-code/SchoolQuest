@@ -127,8 +127,10 @@ export const AnalyticsDashboard: React.FC = () => {
 
                     {user?.papel === 'admin' && (
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Filtrar por Escola:</span>
+                            <label htmlFor="school-select" className="text-gray-400">Filtrar por Escola:</label>
                             <select
+                                id="school-select"
+                                name="school-select"
                                 value={selectedSchool}
                                 onChange={(e) => setSelectedSchool(e.target.value)}
                                 className="bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -207,9 +209,9 @@ export const AnalyticsDashboard: React.FC = () => {
                     {/* Activity Timeline */}
                     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                         <h3 className="text-xl font-bold mb-6">Atividade Diária (30 dias)</h3>
-                        <div className="h-80">
+                        <div className="h-80 w-full">
                             {timeline && timeline.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <LineChart data={timeline}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                                         <XAxis dataKey="date" stroke="#9CA3AF" />
@@ -232,9 +234,9 @@ export const AnalyticsDashboard: React.FC = () => {
                     {/* Category Distribution */}
                     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                         <h3 className="text-xl font-bold mb-6">Distribuição por Categoria</h3>
-                        <div className="h-80">
+                        <div className="h-80 w-full">
                             {categories && categories.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <PieChart>
                                         <Pie
                                             data={categories}

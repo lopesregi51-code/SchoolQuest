@@ -115,6 +115,8 @@ export const MuralPage: React.FC = () => {
                 <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
                     <form onSubmit={handleCreatePost} className="space-y-3">
                         <textarea
+                            id="post-content"
+                            name="post-content"
                             placeholder="O que você quer compartilhar?"
                             value={newPostText}
                             onChange={(e) => setNewPostText(e.target.value)}
@@ -143,6 +145,8 @@ export const MuralPage: React.FC = () => {
                                 <ImageIcon className="w-4 h-4" />
                                 <span>Adicionar Foto</span>
                                 <input
+                                    id="post-image"
+                                    name="post-image"
                                     type="file"
                                     accept="image/*"
                                     onChange={handleImageSelect}
