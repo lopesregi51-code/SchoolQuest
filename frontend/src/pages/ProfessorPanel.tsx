@@ -172,7 +172,6 @@ export const ProfessorPanel: React.FC = () => {
 
             // Close scanner if successful
             setValidatingMissionId(null);
-            stopQrScanner();
             fetchCompletedMissions();
 
         } catch (error: any) {
@@ -180,43 +179,7 @@ export const ProfessorPanel: React.FC = () => {
         }
     };
 
-    const startQrScanner = async () => {
-        try {
-            if (!html5QrCodeRef.current) {
-                html5QrCodeRef.current = new Html5Qrcode("qr-reader");
-            }
-
-            await html5QrCodeRef.current.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 }
-                },
-                (decodedText) => {
-                    // QR Code detected
-                    validateQrCode(decodedText);
-                    // Don't stop immediately to allow continuous scanning? No, usually one by one.
-                    // stopQrScanner(); // Moved to success callback
-                },
-                (_) => {
-                    // Ignore scanning errors (they happen continuously)
-                }
-            );
-        } catch (err) {
-            console.error('Error starting QR scanner:', err);
-            alert('Erro ao iniciar câmera. Verifique as permissões.');
-        }
-    };
-
-    const stopQrScanner = async () => {
-        try {
-            if (html5QrCodeRef.current?.isScanning) {
-                await html5QrCodeRef.current.stop();
-            }
-        } catch (err) {
-            console.error('Error stopping QR scanner:', err);
-        }
-    };
+    // Scanner logic moved to QrScanner component
 
     if (!user) return null;
 
@@ -425,19 +388,6 @@ export const ProfessorPanel: React.FC = () => {
                                                 onClick={() => handleDeleteMission(mission.id)}
                                                 className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
                                                 title="Excluir Missão"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setValidatingMissionId(mission.id);
-                                                    setTimeout(() => startQrScanner(), 100); // Wait for modal to render
-                                                }}
-                                                className="p-2 text-purple-400 hover:bg-purple-900/30 rounded-lg transition-colors"
-                                                title="Validar Presencialmente (QR)"
-                                            >
-                                                <QrCode className="w-5 h-5" />
-                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -535,29 +485,32 @@ export const ProfessorPanel: React.FC = () => {
             </div>
 
             {/* QR Code Scanner Modal */}
+            {/* QR Code Scanner Modal */}
             {validatingMissionId && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700 relative">
                         <button
                             onClick={() => {
                                 setValidatingMissionId(null);
-                                stopQrScanner();
                             }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
                         >
                             <Trash2 className="w-6 h-6 rotate-45" />
                         </button>
 
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                            <QrCode className="w-6 h-6 text-purple-400" />
-                            Validar Missão
-                        </h2>
+                        <h2 className="text-2xl font-bold mb-4 text-center">Escanear QR Code</h2>
 
-                        <p className="text-gray-300 mb-4">
-                            Escaneie o QR Code do aluno para validar a missão automaticamente.
+                        <div className="overflow-hidden rounded-xl bg-black relative mb-4">
+                            <div id="qr-reader" className="w-full"></div>
+                            <QrScanner
+                                onScan={validateQrCode}
+                                onError={(err) => console.log(err)}
+                            />
+                        </div>
+
+                        <p className="text-center text-gray-400 mt-4 text-sm mb-4">
+                            Aponte a câmera para o QR Code do aluno
                         </p>
-
-                        <div id="qr-reader" className="w-full rounded-lg overflow-hidden bg-black mb-4 min-h-[250px]"></div>
 
                         <div className="flex gap-2">
                             <input
@@ -583,4 +536,43 @@ export const ProfessorPanel: React.FC = () => {
             )}
         </div>
     );
+};
+
+// Internal component for handling QR Scanner lifecycle
+const QrScanner: React.FC<{ onScan: (data: string) => void, onError: (err: any) => void }> = ({ onScan, onError }) => {
+    useEffect(() => {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+
+        const startScanner = async () => {
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    (decodedText) => {
+                        onScan(decodedText);
+                    },
+                    (errorMessage) => {
+                        // ignore errors during scanning
+                    }
+                );
+            } catch (err) {
+                onError(err);
+                console.error("Error starting scanner", err);
+            }
+        };
+
+        startScanner();
+
+        return () => {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().catch(console.error);
+            }
+            html5QrCode.clear();
+        };
+    }, [onScan, onError]);
+
+    return null;
 };

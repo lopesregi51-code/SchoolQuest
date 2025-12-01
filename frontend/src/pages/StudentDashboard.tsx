@@ -353,6 +353,10 @@ export const StudentDashboard: React.FC = () => {
                                     src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_BASE_URL}${user.avatar_url}`}
                                     alt="Avatar"
                                     className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.parentElement!.innerText = user.nome.charAt(0);
+                                    }}
                                 />
                             ) : (
                                 user?.nome.charAt(0)

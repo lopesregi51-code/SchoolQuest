@@ -195,6 +195,12 @@ export const UserProfile: React.FC = () => {
                                         src={profile.avatar_url.startsWith('http') ? profile.avatar_url : `${API_BASE_URL}${profile.avatar_url}`}
                                         alt={profile.nome}
                                         className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            // Show fallback icon by removing the image and letting the parent render the fallback? 
+                                            // React state update would be better but simple DOM manipulation works for onError
+                                            e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 text-gray-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                                        }}
                                     />
                                 ) : (
                                     <User className="w-12 h-12 text-gray-400" />
