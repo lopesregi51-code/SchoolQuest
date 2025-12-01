@@ -265,7 +265,8 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db), current_user: 
         "interesses": user.interesses,
         "avatar_url": user.avatar_url,
         "escola_nome": user.escola.nome if user.escola else None,
-        "joined_at": user.criado_em
+        "joined_at": user.criado_em,
+        "qr_token": user.qr_token
     }
     
     # Clan info
