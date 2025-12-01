@@ -130,7 +130,7 @@ export const StudentDashboard: React.FC = () => {
                         <div className="flex justify-center mb-6">
                             {user.qr_token ? (
                                 <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=schoolquest:token:${user.qr_token}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://school-quest-pi.vercel.app/qr/${user.id}/${user.qr_token}`)}`}
                                     alt="QR Code"
                                     className="w-64 h-64"
                                 />

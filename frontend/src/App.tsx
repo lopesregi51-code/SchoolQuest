@@ -13,6 +13,7 @@ import { AdminPanel } from './pages/AdminPanel';
 import { MuralPage } from './pages/MuralPage';
 import { ShopPage } from './pages/ShopPage';
 import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { QrHandler } from './pages/QrHandler';
 import { BookOpen, Shield, Trophy } from 'lucide-react';
 
 const HomePage = () => {
@@ -114,6 +115,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/qr/:userId/:token" element={<QrHandler />} />
             <Route
               path="/dashboard"
               element={

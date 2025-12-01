@@ -223,7 +223,7 @@ Este projeto é de código aberto.
 
 ## 👨‍💻 Desenvolvido por
 
-SchoolQuest Team
+REGINALDO LOPES
 
 ---
 

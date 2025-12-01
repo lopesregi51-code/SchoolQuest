@@ -143,26 +143,36 @@ export const ProfessorPanel: React.FC = () => {
         try {
             let payload: any = {};
 
-            // Check for new token format: schoolquest:token:{token}
-            if (qrData.startsWith('schoolquest:token:')) {
+            // Check for URL format: https://domain/qr/USER_ID/TOKEN
+            if (qrData.includes('/qr/')) {
+                const parts = qrData.split('/qr/')[1]?.split('/');
+                if (parts && parts.length >= 2) {
+                    const userId = parseInt(parts[0]);
+                    const token = parts[1];
+                    if (!isNaN(userId) && token) {
+                        payload = { aluno_id: userId, qr_token: token };
+                    }
+                }
+            }
+            // Check for token format: schoolquest:token:{token}
+            else if (qrData.startsWith('schoolquest:token:')) {
                 const token = qrData.split(':')[2];
                 payload = { qr_token: token };
             }
-            // Check for old format: schoolquest:user:{id}:{email}
+            // Check for user format: schoolquest:user:{id}:{token}
             else if (qrData.startsWith('schoolquest:user:')) {
                 const parts = qrData.split(':');
                 const userId = parseInt(parts[2]);
-                if (!isNaN(userId)) {
-                    payload = { aluno_id: userId };
+                const token = parts[3];
+                if (!isNaN(userId) && token) {
+                    payload = { aluno_id: userId, qr_token: token };
                 }
             } else {
-                // Try as raw token if it's a UUID-like string? 
-                // Or just assume it's invalid if not prefixed
                 alert('Formato de QR Code inválido');
                 return;
             }
 
-            if (!payload.aluno_id && !payload.qr_token) {
+            if (!payload.qr_token && !payload.aluno_id) {
                 alert('Dados do QR Code inválidos');
                 return;
             }

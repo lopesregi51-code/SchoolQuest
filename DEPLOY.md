@@ -22,8 +22,8 @@
    - **Plan**: **Free** (0$/mês)
 4. Clique em **"Create Database"**
 5. **IMPORTANTE**: Copie e salve:
-   - **Internal Database URL** (para o backend)
-   - **External Database URL** (para acesso externo, se necessário)
+   - **Internal Database URL** postgresql://schoolquest_user:DdMvQ30ftBEzRLH4Q3iVVYzZTB4ztpV7@dpg-d4mfh3chg0os73bq5mb0-a/schoolquest_c3as
+   - **External Database URL** postgresql://schoolquest_user:DdMvQ30ftBEzRLH4Q3iVVYzZTB4ztpV7@dpg-d4mfh3chg0os73bq5mb0-a.oregon-postgres.render.com/schoolquest_c3as
 
 ### 1.2 Instalar Dependências PostgreSQL
 

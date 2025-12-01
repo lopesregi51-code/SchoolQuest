@@ -528,7 +528,7 @@ export const UserProfile: React.FC = () => {
                         <div className="flex justify-center mb-6">
                             {profile.qr_token ? (
                                 <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=schoolquest:user:${profile.id}:${profile.qr_token}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://school-quest-pi.vercel.app/qr/${profile.id}/${profile.qr_token}`)}`}
                                     alt="QR Code"
                                     className="w-64 h-64"
                                 />
