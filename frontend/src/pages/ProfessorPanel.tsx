@@ -388,6 +388,18 @@ export const ProfessorPanel: React.FC = () => {
                                                 onClick={() => handleDeleteMission(mission.id)}
                                                 className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
                                                 title="Excluir Missão"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setValidatingMissionId(mission.id);
+                                                }}
+                                                className="p-2 text-purple-400 hover:bg-purple-900/30 rounded-lg transition-colors"
+                                                title="Validar Presencialmente (QR)"
+                                            >
+                                                <QrCode className="w-5 h-5" />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -554,7 +566,7 @@ const QrScanner: React.FC<{ onScan: (data: string) => void, onError: (err: any) 
                     (decodedText) => {
                         onScan(decodedText);
                     },
-                    (errorMessage) => {
+                    (_) => {
                         // ignore errors during scanning
                     }
                 );
