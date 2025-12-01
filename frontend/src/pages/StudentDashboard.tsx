@@ -5,6 +5,7 @@ import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
 
 interface Mission {
     id: number;
@@ -386,6 +387,8 @@ export const StudentDashboard: React.FC = () => {
                     <Ranking />
                 </div>
             </div>
-        </div>
+
+            <ThemeSwitcher />
+        </div >
     );
 };

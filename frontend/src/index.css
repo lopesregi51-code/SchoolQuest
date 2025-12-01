@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-primary: 43 108 176; /* #2B6CB0 */
+  --color-secondary: 229 62 62; /* #E53E3E */
+}
+
+.theme-purple {
+  --color-primary: 147 51 234; /* #9333EA */
+  --color-secondary: 219 39 119; /* #DB2777 */
+}
+
+.theme-green {
+  --color-primary: 22 163 74; /* #16A34A */
+  --color-secondary: 202 138 4; /* #CA8A04 */
+}
+
+.theme-orange {
+  --color-primary: 234 88 12; /* #EA580C */
+  --color-secondary: 220 38 38; /* #DC2626 */
+}
+
+.theme-pink {
+  --color-primary: 219 39 119; /* #DB2777 */
+  --color-secondary: 147 51 234; /* #9333EA */
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { StudentDashboard } from './pages/StudentDashboard';
@@ -108,60 +109,62 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardRouter />
+        <ThemeProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardRouter />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:id"
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clans"
+              element={
+                <ProtectedRoute>
+                  <ClanPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/mural" element={
+              <ProtectedRoute allowedRoles={['aluno', 'professor', 'gestor', 'admin']}>
+                <MuralPage />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
+            } />
+            <Route path="/shop" element={
+              <ProtectedRoute allowedRoles={['aluno']}>
+                <ShopPage />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/:id"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <AnalyticsDashboard />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clans"
-            element={
-              <ProtectedRoute>
-                <ClanPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/mural" element={
-            <ProtectedRoute allowedRoles={['aluno', 'professor', 'gestor', 'admin']}>
-              <MuralPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/shop" element={
-            <ProtectedRoute allowedRoles={['aluno']}>
-              <ShopPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/analytics" element={
-            <ProtectedRoute allowedRoles={['gestor', 'admin']}>
-              <AnalyticsDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/professor" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            } />
+            <Route path="/professor" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

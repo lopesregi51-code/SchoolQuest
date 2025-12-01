@@ -4,6 +4,7 @@ import { BookOpen, Plus, LogOut, CheckCircle, QrCode, Trash2 } from 'lucide-reac
 import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { Html5Qrcode } from 'html5-qrcode';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
 
 
 
@@ -497,7 +498,6 @@ export const ProfessorPanel: React.FC = () => {
             </div>
 
             {/* QR Code Scanner Modal */}
-            {/* QR Code Scanner Modal */}
             {validatingMissionId && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700 relative">
@@ -546,6 +546,7 @@ export const ProfessorPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+            <ThemeSwitcher />
         </div>
     );
 };
