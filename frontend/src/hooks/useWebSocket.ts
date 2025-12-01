@@ -20,10 +20,11 @@ export const useWebSocket = () => {
     useEffect(() => {
         if (!user) return;
 
-        // Determinar URL do WebSocket baseado no ambiente
-        const wsUrl = process.env.NODE_ENV === 'production'
-            ? `wss://${window.location.host}/ws/${user.id}`
-            : `ws://localhost:8000/ws/${user.id}`;
+        // Get API URL from environment and convert to WebSocket URL
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const wsUrl = apiUrl
+            .replace('https://', 'wss://')
+            .replace('http://', 'ws://') + `/ws/${user.id}`;
 
         const websocket = new WebSocket(wsUrl);
 
