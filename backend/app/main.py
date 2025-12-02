@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 import logging
 from datetime import timedelta
@@ -34,16 +33,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Custom StaticFiles to handle CORS and CORB (Mantido para /media por enquanto)
-class CORSStaticFiles(StaticFiles):
-    async def get_response(self, path: str, scope):
-        response = await super().get_response(path, scope)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
-        return response
-
 # Criar tabelas
 models.Base.metadata.create_all(bind=database.engine)
 
@@ -58,20 +47,18 @@ app.include_router(admin.router)
 app.include_router(system.router)
 app.include_router(clans.router)
 
-# Static files
-app.mount("/media", CORSStaticFiles(directory="media"), name="media")
-
-# Serve uploaded files with FileResponse to prevent CORB
+# Ensure directories exist
+os.makedirs("media", exist_ok=True)
 os.makedirs("uploads", exist_ok=True)
 
-@app.get("/uploads/{file_path:path}")
-async def get_uploaded_file(file_path: str):
-    """Serve uploaded files with correct Content-Type to prevent CORB."""
-    full_path = os.path.join("uploads", file_path)
+# Serve media files with FileResponse to prevent CORB
+@app.get("/media/{file_path:path}")
+async def serve_media(file_path: str):
+    """Serve media files with correct Content-Type to prevent CORB."""
+    full_path = os.path.join("media", file_path)
     
     # Security check to prevent directory traversal
-    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("uploads")):
-        # Retornar SVG placeholder
+    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("media")):
         svg_content = """
         <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#f8d7da"/>
@@ -81,7 +68,6 @@ async def get_uploaded_file(file_path: str):
         return Response(content=svg_content, media_type="image/svg+xml")
 
     if not os.path.exists(full_path):
-        # Retornar SVG placeholder em vez de 404 JSON para evitar CORB
         svg_content = """
         <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#e2e3e5"/>
@@ -90,8 +76,44 @@ async def get_uploaded_file(file_path: str):
         </svg>
         """
         return Response(content=svg_content, media_type="image/svg+xml")
-        
-    return FileResponse(full_path)
+    
+    # Return FileResponse with explicit CORS headers
+    response = FileResponse(full_path)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    return response
+
+# Serve uploaded files with FileResponse to prevent CORB
+@app.get("/uploads/{file_path:path}")
+async def get_uploaded_file(file_path: str):
+    """Serve uploaded files with correct Content-Type to prevent CORB."""
+    full_path = os.path.join("uploads", file_path)
+    
+    # Security check to prevent directory traversal
+    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("uploads")):
+        svg_content = """
+        <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f8d7da"/>
+            <text x="50%" y="50%" font-family="Arial" font-size="16" fill="#721c24" text-anchor="middle" dy=".3em">Acesso Negado</text>
+        </svg>
+        """
+        return Response(content=svg_content, media_type="image/svg+xml")
+
+    if not os.path.exists(full_path):
+        svg_content = """
+        <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#e2e3e5"/>
+            <text x="50%" y="50%" font-family="Arial" font-size="16" fill="#383d41" text-anchor="middle" dy=".3em">Imagem não encontrada</text>
+            <text x="50%" y="65%" font-family="Arial" font-size="12" fill="#383d41" text-anchor="middle" dy=".3em">(Provavelmente deletada)</text>
+        </svg>
+        """
+        return Response(content=svg_content, media_type="image/svg+xml")
+    
+    # Return FileResponse with explicit CORS headers
+    response = FileResponse(full_path)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    return response
 
 
 @app.websocket("/ws/{user_id}")
