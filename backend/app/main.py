@@ -31,7 +31,20 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Middleware to add CORS headers to static files
+@app.middleware("http")
+async def add_cors_header_to_static_files(request, call_next):
+    response = await call_next(request)
+    # Add CORS headers to media and uploads paths
+    if request.url.path.startswith("/media") or request.url.path.startswith("/uploads"):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    return response
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=database.engine)
