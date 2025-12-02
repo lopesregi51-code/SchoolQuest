@@ -17,6 +17,7 @@ export const ProfessorPanel: React.FC = () => {
     const [pendingMissions, setPendingMissions] = useState<any[]>([]);
     const [completedMissions, setCompletedMissions] = useState<any[]>([]);
     const [clans, setClans] = useState<any[]>([]);
+    const [turmas, setTurmas] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         titulo: '',
         descricao: '',
@@ -24,7 +25,8 @@ export const ProfessorPanel: React.FC = () => {
         moedas: 5,
         categoria: 'diaria',
         tipo: 'individual',
-        clan_id: ''
+        clan_id: '',
+        turma_id: ''
     });
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
@@ -33,6 +35,7 @@ export const ProfessorPanel: React.FC = () => {
         fetchPendingMissions();
         fetchCompletedMissions();
         fetchClans();
+        fetchTurmas();
 
         return () => {
             if (html5QrCodeRef.current?.isScanning) {
@@ -47,6 +50,15 @@ export const ProfessorPanel: React.FC = () => {
             setClans(response.data);
         } catch (error) {
             console.error('Erro ao buscar clãs', error);
+        }
+    };
+
+    const fetchTurmas = async () => {
+        try {
+            const response = await apiClient.get('/missoes/turmas');
+            setTurmas(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar turmas', error);
         }
     };
 
@@ -115,8 +127,13 @@ export const ProfessorPanel: React.FC = () => {
             const payload: any = { ...formData };
             if (payload.tipo === 'clan' && payload.clan_id) {
                 payload.clan_id = parseInt(payload.clan_id);
+                delete payload.turma_id;
+            } else if (payload.tipo === 'turma' && payload.turma_id) {
+                payload.turma_id = parseInt(payload.turma_id);
+                delete payload.clan_id;
             } else {
                 delete payload.clan_id;
+                delete payload.turma_id;
             }
 
             await apiClient.post('/missoes/', payload);
@@ -128,7 +145,8 @@ export const ProfessorPanel: React.FC = () => {
                 moedas: 5,
                 categoria: 'diaria',
                 tipo: 'individual',
-                clan_id: ''
+                clan_id: '',
+                turma_id: ''
             });
             setIsCreating(false);
             fetchMyMissions(); // Refresh list after creation
@@ -320,6 +338,7 @@ export const ProfessorPanel: React.FC = () => {
                                         >
                                             <option value="individual">Individual (Aluno)</option>
                                             <option value="clan">Clã (Coletiva)</option>
+                                            <option value="turma">Turma (Série)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -338,6 +357,25 @@ export const ProfessorPanel: React.FC = () => {
                                             <option value="">Selecione um clã...</option>
                                             {clans.map(clan => (
                                                 <option key={clan.id} value={clan.id}>{clan.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {formData.tipo === 'turma' && (
+                                    <div>
+                                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                                            Selecione a Turma
+                                        </label>
+                                        <select
+                                            value={formData.turma_id}
+                                            onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                                            required
+                                        >
+                                            <option value="">Selecione uma turma...</option>
+                                            {turmas.map(turma => (
+                                                <option key={turma.id} value={turma.id}>{turma.nome}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -383,6 +421,11 @@ export const ProfessorPanel: React.FC = () => {
                                                 {mission.tipo === 'clan' && (
                                                     <span className="px-2 py-0.5 bg-purple-900 text-purple-200 text-xs rounded border border-purple-500/30">
                                                         Clã
+                                                    </span>
+                                                )}
+                                                {mission.tipo === 'turma' && (
+                                                    <span className="px-2 py-0.5 bg-indigo-900 text-indigo-200 text-xs rounded border border-indigo-500/30">
+                                                        Turma
                                                     </span>
                                                 )}
                                             </div>
