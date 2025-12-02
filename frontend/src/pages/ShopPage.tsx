@@ -95,7 +95,7 @@ export const ShopPage: React.FC = () => {
                                     ) : (
                                         <Star className="w-16 h-16 text-gray-600" />
                                     )}
-                                    {item.estoque <= 0 && (
+                                    {item.estoque !== -1 && item.estoque <= 0 && (
                                         <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                                             <span className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg transform -rotate-12 border-2 border-white">
                                                 ESGOTADO
@@ -108,7 +108,7 @@ export const ShopPage: React.FC = () => {
                                     <div className="flex justify-between items-start mb-2">
                                         <h3 className="text-xl font-bold">{item.nome}</h3>
                                         <span className="px-2 py-1 bg-gray-700 rounded text-xs text-gray-300">
-                                            Restam: {item.estoque}
+                                            Restam: {item.estoque === -1 ? 'Infinito' : item.estoque}
                                         </span>
                                     </div>
 
@@ -121,16 +121,16 @@ export const ShopPage: React.FC = () => {
 
                                         <button
                                             onClick={() => handleBuy(item)}
-                                            disabled={item.estoque <= 0 || (user?.moedas || 0) < item.custo}
+                                            disabled={(item.estoque !== -1 && item.estoque <= 0) || (user?.moedas || 0) < item.custo}
                                             className={`px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2
-                                                ${item.estoque <= 0
+                                                ${(item.estoque !== -1 && item.estoque <= 0)
                                                     ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                                     : (user?.moedas || 0) < item.custo
                                                         ? 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'
                                                         : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/50'
                                                 }`}
                                         >
-                                            {item.estoque <= 0 ? 'Esgotado' : 'Comprar'}
+                                            {(item.estoque !== -1 && item.estoque <= 0) ? 'Esgotado' : 'Comprar'}
                                         </button>
                                     </div>
                                 </div>

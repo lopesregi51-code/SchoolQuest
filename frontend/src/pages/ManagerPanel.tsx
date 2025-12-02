@@ -520,7 +520,7 @@ export const ManagerPanel: React.FC = () => {
                                         <p className="text-xs text-gray-400 mb-1">{item.descricao}</p>
                                         <div className="flex gap-2 text-xs font-mono">
                                             <span className="text-yellow-400">{item.custo} Moedas</span>
-                                            <span className="text-blue-300">Estoque: {item.estoque}</span>
+                                            <span className="text-blue-300">Estoque: {item.estoque === -1 ? 'Infinito' : item.estoque}</span>
                                         </div>
                                     </div>
                                     <button
