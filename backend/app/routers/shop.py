@@ -65,11 +65,8 @@ def list_rewards(db: Session = Depends(get_db), current_user: User = Depends(get
     try:
         query = db.query(Reward)
         
-        # Professores veem apenas suas próprias recompensas
-        if current_user.papel == 'professor':
-            query = query.filter(Reward.criador_id == current_user.id)
-        # Gestores e admins veem todas da escola
-        elif current_user.escola_id:
+        # Gestores, admins e professores veem todas da escola
+        if current_user.escola_id:
             query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
         
         rewards = query.all()
@@ -94,70 +91,6 @@ def list_rewards(db: Session = Depends(get_db), current_user: User = Depends(get
 @router.post("/shop/buy/{item_id}")
 def buy_reward(item_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = db.query(Reward).filter(Reward.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
-    
-    if item.estoque == 0:
-        raise HTTPException(status_code=400, detail="Item esgotado")
-    
-    if current_user.moedas < item.custo:
-        raise HTTPException(status_code=400, detail="Moedas insuficientes")
-    
-    # Process purchase
-    current_user.moedas -= item.custo
-    if item.estoque > 0:
-        item.estoque -= 1
-    
-    purchase = Purchase(
-        user_id=current_user.id,
-        reward_id=item.id,
-        custo_pago=item.custo,
-        status="pendente"
-    )
-    
-    db.add(purchase)
-    db.commit()
-    db.refresh(purchase)
-    
-    return {"message": "Compra realizada com sucesso!", "purchase_id": purchase.id, "new_moedas": current_user.moedas}
-
-# Manager endpoints for Rewards
-@router.post("/shop/items", response_model=RewardResponse)
-def create_reward(reward: RewardCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.papel not in ['gestor', 'admin', 'professor']:
-        raise HTTPException(status_code=403, detail="Apenas gestores e professores podem criar itens")
-    
-    db_reward = Reward(
-        nome=reward.nome,
-        descricao=reward.descricao,
-        custo=reward.custo,
-        estoque=reward.estoque,
-        imagem_url=reward.imagem_url,
-        escola_id=current_user.escola_id,
-        criador_id=current_user.id
-    )
-    db.add(db_reward)
-    db.commit()
-    db.refresh(db_reward)
-    return db_reward
-
-@router.put("/shop/items/{item_id}", response_model=RewardResponse)
-def update_reward(item_id: int, reward: RewardUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.papel not in ['gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    db_reward = db.query(Reward).filter(Reward.id == item_id).first()
-    if not db_reward:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
-    
-    if reward.nome: db_reward.nome = reward.nome
-    if reward.descricao: db_reward.descricao = reward.descricao
-    if reward.custo: db_reward.custo = reward.custo
-    if reward.estoque: db_reward.estoque = reward.estoque
-    if reward.imagem_url: db_reward.imagem_url = reward.imagem_url
-    
-    db.commit()
-    db.refresh(db_reward)
     return db_reward
 
 @router.delete("/shop/items/{item_id}")

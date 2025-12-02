@@ -224,22 +224,6 @@ class Reward(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
-    descricao = Column(String)
-    custo = Column(Integer) # XP cost by default
-    estoque = Column(Integer, default=-1) # -1 for infinite
-    imagem_url = Column(String, nullable=True)
-    escola_id = Column(Integer, ForeignKey("escolas.id"), nullable=True)
-    criador_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=datetime.utcnow)
-
-    escola = relationship("Escola")
-    criador = relationship("User", foreign_keys=[criador_id])
-
-
-class Purchase(Base):
-    __tablename__ = "purchases"
-
-    id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     reward_id = Column(Integer, ForeignKey("rewards.id"), nullable=True)
     item_id = Column(Integer, ForeignKey("itens.id"), nullable=True)
