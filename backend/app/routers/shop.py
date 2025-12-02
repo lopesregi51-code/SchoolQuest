@@ -67,9 +67,15 @@ def list_rewards(db: Session = Depends(get_db), current_user: User = Depends(get
         
         # Gestores, admins e professores veem todas da escola
         if current_user.escola_id:
-            query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
-        
-        rewards = query.all()
+            try:
+                query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
+                rewards = query.all()
+            except Exception as e:
+                logger.warning(f"Erro ao filtrar por escola (coluna inexistente?): {e}")
+                db.rollback()
+                rewards = db.query(Reward).all()
+        else:
+            rewards = query.all()
         valid_rewards = []
         
         for r in rewards:
