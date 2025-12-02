@@ -264,10 +264,12 @@ export const ProfessorPanel: React.FC = () => {
                         {isCreating && (
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                                        Título
+                                    <label htmlFor="mission-title" className="block text-gray-300 text-sm font-medium mb-2">
+                                        Título da Missão
                                     </label>
                                     <input
+                                        id="mission-title"
+                                        name="titulo"
                                         type="text"
                                         value={formData.titulo}
                                         onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
@@ -278,10 +280,12 @@ export const ProfessorPanel: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                                    <label htmlFor="mission-description" className="block text-gray-300 text-sm font-medium mb-2">
                                         Descrição
                                     </label>
                                     <textarea
+                                        id="mission-description"
+                                        name="descricao"
                                         value={formData.descricao}
                                         onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                                         className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
