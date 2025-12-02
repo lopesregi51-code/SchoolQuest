@@ -229,9 +229,11 @@ class Reward(Base):
     estoque = Column(Integer, default=-1) # -1 for infinite
     imagem_url = Column(String, nullable=True)
     escola_id = Column(Integer, ForeignKey("escolas.id"), nullable=True)
+    criador_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
 
     escola = relationship("Escola")
+    criador = relationship("User", foreign_keys=[criador_id])
 
 
 class Purchase(Base):

@@ -42,8 +42,14 @@ class RewardResponse(BaseModel):
 @router.get("/shop/", response_model=List[RewardResponse])
 def list_rewards(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     query = db.query(Reward)
-    if current_user.escola_id:
+    
+    # Professores veem apenas suas próprias recompensas
+    if current_user.papel == 'professor':
+        query = query.filter(Reward.criador_id == current_user.id)
+    # Gestores e admins veem todas da escola
+    elif current_user.escola_id:
         query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
+    
     return query.all()
 
 @router.post("/shop/buy/{item_id}")
@@ -79,8 +85,8 @@ def buy_reward(item_id: int, db: Session = Depends(get_db), current_user: User =
 # Manager endpoints for Rewards
 @router.post("/shop/items", response_model=RewardResponse)
 def create_reward(reward: RewardCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.papel not in ['gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Apenas gestores podem criar itens")
+    if current_user.papel not in ['gestor', 'admin', 'professor']:
+        raise HTTPException(status_code=403, detail="Apenas gestores e professores podem criar itens")
     
     db_reward = Reward(
         nome=reward.nome,
@@ -88,7 +94,8 @@ def create_reward(reward: RewardCreate, db: Session = Depends(get_db), current_u
         custo=reward.custo,
         estoque=reward.estoque,
         imagem_url=reward.imagem_url,
-        escola_id=current_user.escola_id
+        escola_id=current_user.escola_id,
+        criador_id=current_user.id
     )
     db.add(db_reward)
     db.commit()
