@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +34,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Custom StaticFiles to handle CORS and CORB
+# Custom StaticFiles to handle CORS and CORB (Mantido para /media por enquanto)
 class CORSStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         response = await super().get_response(path, scope)
@@ -60,9 +60,23 @@ app.include_router(clans.router)
 
 # Static files
 app.mount("/media", CORSStaticFiles(directory="media"), name="media")
-# Mount uploads directory for avatars
+
+# Serve uploaded files with FileResponse to prevent CORB
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", CORSStaticFiles(directory="uploads"), name="uploads")
+
+@app.get("/uploads/{file_path:path}")
+async def get_uploaded_file(file_path: str):
+    """Serve uploaded files with correct Content-Type to prevent CORB."""
+    full_path = os.path.join("uploads", file_path)
+    
+    # Security check to prevent directory traversal
+    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("uploads")):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(full_path)
 
 
 @app.websocket("/ws/{user_id}")
