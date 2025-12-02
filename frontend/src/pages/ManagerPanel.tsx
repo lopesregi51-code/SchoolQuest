@@ -298,7 +298,9 @@ export const ManagerPanel: React.FC = () => {
             setNewReward({ nome: '', descricao: '', custo: 0, estoque: 1, imagem_url: '' });
             fetchRewards();
         } catch (error: any) {
-            alert(error.response?.data?.detail || 'Erro ao criar recompensa');
+            console.error('Error creating reward:', error);
+            const detail = error.response?.data?.detail;
+            alert(typeof detail === 'object' ? JSON.stringify(detail) : (detail || 'Erro ao criar recompensa'));
         }
     };
 
@@ -483,7 +485,7 @@ export const ManagerPanel: React.FC = () => {
                                         type="number"
                                         placeholder="Custo (Moedas)"
                                         value={newReward.custo}
-                                        onChange={e => setNewReward({ ...newReward, custo: parseInt(e.target.value) })}
+                                        onChange={e => setNewReward({ ...newReward, custo: parseInt(e.target.value) || 0 })}
                                         className="w-full bg-gray-600 border border-gray-500 rounded p-2 text-white"
                                         required
                                     />
@@ -491,7 +493,7 @@ export const ManagerPanel: React.FC = () => {
                                         type="number"
                                         placeholder="Estoque"
                                         value={newReward.estoque}
-                                        onChange={e => setNewReward({ ...newReward, estoque: parseInt(e.target.value) })}
+                                        onChange={e => setNewReward({ ...newReward, estoque: parseInt(e.target.value) || 0 })}
                                         className="w-full bg-gray-600 border border-gray-500 rounded p-2 text-white"
                                         required
                                     />

@@ -44,21 +44,52 @@ class RewardResponse(BaseModel):
     def set_default_estoque(cls, v):
         return v if v is not None else -1
 
+    @validator('nome', pre=True, always=True)
+    def set_default_nome(cls, v):
+        return v or "Item sem nome"
+
+    @validator('descricao', pre=True, always=True)
+    def set_default_descricao(cls, v):
+        return v or ""
+
     class Config:
         orm_mode = True
 
+import logging
+
+# Configurar logger
+logger = logging.getLogger(__name__)
+
 @router.get("/shop/", response_model=List[RewardResponse])
 def list_rewards(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = db.query(Reward)
-    
-    # Professores veem apenas suas próprias recompensas
-    if current_user.papel == 'professor':
-        query = query.filter(Reward.criador_id == current_user.id)
-    # Gestores e admins veem todas da escola
-    elif current_user.escola_id:
-        query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
-    
-    return query.all()
+    try:
+        query = db.query(Reward)
+        
+        # Professores veem apenas suas próprias recompensas
+        if current_user.papel == 'professor':
+            query = query.filter(Reward.criador_id == current_user.id)
+        # Gestores e admins veem todas da escola
+        elif current_user.escola_id:
+            query = query.filter((Reward.escola_id == current_user.escola_id) | (Reward.escola_id == None))
+        
+        rewards = query.all()
+        valid_rewards = []
+        
+        for r in rewards:
+            try:
+                # Tenta converter para o modelo Pydantic para validar
+                valid_reward = RewardResponse.from_orm(r)
+                valid_rewards.append(valid_reward)
+            except Exception as e:
+                logger.error(f"Erro ao processar recompensa ID {r.id}: {e}")
+                # Continua para o próximo item em vez de quebrar tudo
+                continue
+                
+        return valid_rewards
+        
+    except Exception as e:
+        logger.error(f"Erro fatal ao listar recompensas: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao carregar loja")
 
 @router.post("/shop/buy/{item_id}")
 def buy_reward(item_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
