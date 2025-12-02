@@ -733,174 +733,140 @@ export const ProfessorPanel: React.FC = () => {
                             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                                 {pendingMissions
                                     .filter(pending =>
-                                        pending.aluno_nome.toLowerCase().includes(filterText.toLowerCase()) ||
-                                        pending.missao_titulo.toLowerCase().includes(filterText.toLowerCase()) ||
-                                        (pending.aluno_serie && pending.aluno_serie.toLowerCase().includes(filterText.toLowerCase()))
-                                    )
-                                    .map((pending) => (
-                                        <div key={pending.id} className="bg-gray-700 p-4 rounded-lg border border-yellow-600/30">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <h3 className="font-bold text-lg">{pending.missao_titulo}</h3>
-                                                    <p className="text-sm text-gray-300">
-                                                        Aluno: {pending.aluno_nome} ({pending.aluno_serie})
-                                                    </p>
-                                                    <p className="text-xs text-gray-400">
-                                                        Enviada em: {new Date(pending.data_solicitacao).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleValidateMission(pending.id, true)}
-                                                        className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold text-sm transition-colors"
-                                                    >
-                                                        Aprovar
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleValidateMission(pending.id, false)}
-                                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-sm transition-colors"
-                                                    >
-                                                        Rejeitar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                            </div>
                         )}
-                    </div>
+                            </div>
 
 
 
                     {/* Completed Missions */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold flex items-center gap-2">
-                                <CheckCircle className="w-6 h-6 text-green-400" />
-                                Missões Concluídas
-                            </h2>
-                        </div>
-                        {completedMissions.length === 0 ? (
-                            <p className="text-gray-400">Nenhuma missão concluída ainda.</p>
-                        ) : (
-                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                {completedMissions.map((completion) => (
-                                    <div key={completion.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                                        <div>
-                                            <h3 className="font-bold text-lg">{completion.missao_titulo}</h3>
-                                            <p className="text-sm text-gray-300">
-                                                Aluno: {completion.aluno_nome} ({completion.aluno_serie})
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                Concluída em: {new Date(completion.data_validacao).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
+                        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <CheckCircle className="w-6 h-6 text-green-400" />
+                                    Missões Concluídas
+                                </h2>
                             </div>
-                        )}
-                    </div>
-
-
-
-
-                </div>
-
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    <Ranking />
-                </div>
-            </div>
-
-            {/* QR Code Scanner Modal */}
-            {validatingMissionId && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700 relative">
-                        <button
-                            onClick={() => {
-                                setValidatingMissionId(null);
-                            }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
-                        >
-                            <Trash2 className="w-6 h-6 rotate-45" />
-                        </button>
-
-                        <h2 className="text-2xl font-bold mb-4 text-center">Escanear QR Code</h2>
-
-                        <div className="overflow-hidden rounded-xl bg-black relative mb-4">
-                            <div id="qr-reader" className="w-full"></div>
-                            <QrScanner
-                                onScan={validateQrCode}
-                                onError={(err) => console.log(err)}
-                            />
+                            {completedMissions.length === 0 ? (
+                                <p className="text-gray-400">Nenhuma missão concluída ainda.</p>
+                            ) : (
+                                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {completedMissions.map((completion) => (
+                                        <div key={completion.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                                            <div>
+                                                <h3 className="font-bold text-lg">{completion.missao_titulo}</h3>
+                                                <p className="text-sm text-gray-300">
+                                                    Aluno: {completion.aluno_nome} ({completion.aluno_serie})
+                                                </p>
+                                                <p className="text-xs text-gray-400">
+                                                    Concluída em: {new Date(completion.data_validacao).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        <p className="text-center text-gray-400 mt-4 text-sm mb-4">
-                            Aponte a câmera para o QR Code do aluno
-                        </p>
 
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                placeholder="Ou cole o código do QR aqui..."
-                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                id="qrInputModal"
-                            />
+
+
+                    </div>
+
+                    {/* Sidebar */}
+                    <div className="space-y-6">
+                        <Ranking />
+                    </div>
+                </div>
+
+                {/* QR Code Scanner Modal */}
+                {validatingMissionId && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700 relative">
                             <button
-                                onClick={async () => {
-                                    const input = document.getElementById('qrInputModal') as HTMLInputElement;
-                                    if (!input.value) return;
-                                    await validateQrCode(input.value);
-                                    input.value = '';
+                                onClick={() => {
+                                    setValidatingMissionId(null);
                                 }}
-                                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
+                                className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
                             >
-                                Validar
+                                <Trash2 className="w-6 h-6 rotate-45" />
                             </button>
+
+                            <h2 className="text-2xl font-bold mb-4 text-center">Escanear QR Code</h2>
+
+                            <div className="overflow-hidden rounded-xl bg-black relative mb-4">
+                                <div id="qr-reader" className="w-full"></div>
+                                <QrScanner
+                                    onScan={validateQrCode}
+                                    onError={(err) => console.log(err)}
+                                />
+                            </div>
+
+                            <p className="text-center text-gray-400 mt-4 text-sm mb-4">
+                                Aponte a câmera para o QR Code do aluno
+                            </p>
+
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Ou cole o código do QR aqui..."
+                                    className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    id="qrInputModal"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        const input = document.getElementById('qrInputModal') as HTMLInputElement;
+                                        if (!input.value) return;
+                                        await validateQrCode(input.value);
+                                        input.value = '';
+                                    }}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
+                                >
+                                    Validar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-            <ThemeSwitcher />
-        </div>
-    );
+                )}
+                <ThemeSwitcher />
+            </div>
+            );
 };
 
-// Internal component for handling QR Scanner lifecycle
-const QrScanner: React.FC<{ onScan: (data: string) => void, onError: (err: any) => void }> = ({ onScan, onError }) => {
-    useEffect(() => {
-        const html5QrCode = new Html5Qrcode("qr-reader");
+            // Internal component for handling QR Scanner lifecycle
+            const QrScanner: React.FC<{ onScan: (data: string) => void, onError: (err: any) => void }> = ({onScan, onError}) => {
+                useEffect(() => {
+                    const html5QrCode = new Html5Qrcode("qr-reader");
 
-        const startScanner = async () => {
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 }
-                    },
-                    (decodedText) => {
-                        onScan(decodedText);
-                    },
-                    (_) => {
-                        // ignore errors during scanning
-                    }
-                );
-            } catch (err) {
-                onError(err);
-                console.error("Error starting scanner", err);
-            }
-        };
+                    const startScanner = async () => {
+                        try {
+                            await html5QrCode.start(
+                                { facingMode: "environment" },
+                                {
+                                    fps: 10,
+                                    qrbox: { width: 250, height: 250 }
+                                },
+                                (decodedText) => {
+                                    onScan(decodedText);
+                                },
+                                (_) => {
+                                    // ignore errors during scanning
+                                }
+                            );
+                        } catch (err) {
+                            onError(err);
+                            console.error("Error starting scanner", err);
+                        }
+                    };
 
-        startScanner();
+                    startScanner();
 
-        return () => {
-            if (html5QrCode.isScanning) {
-                html5QrCode.stop().catch(console.error);
-            }
-            html5QrCode.clear();
-        };
-    }, [onScan, onError]);
+                    return () => {
+                        if (html5QrCode.isScanning) {
+                            html5QrCode.stop().catch(console.error);
+                        }
+                        html5QrCode.clear();
+                    };
+                }, [onScan, onError]);
 
-    return null;
+            return null;
 };
