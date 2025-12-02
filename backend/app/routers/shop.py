@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from datetime import datetime
 from ..database import get_db
 from ..models import User, Reward, Purchase, Item, UserItem
@@ -31,10 +31,18 @@ class RewardResponse(BaseModel):
     id: int
     nome: str
     descricao: str
-    custo: int
-    estoque: int
+    custo: Optional[int] = 0
+    estoque: Optional[int] = -1
     imagem_url: Optional[str]
     escola_id: Optional[int]
+
+    @validator('custo', pre=True, always=True)
+    def set_default_custo(cls, v):
+        return v if v is not None else 0
+
+    @validator('estoque', pre=True, always=True)
+    def set_default_estoque(cls, v):
+        return v if v is not None else -1
 
     class Config:
         orm_mode = True
