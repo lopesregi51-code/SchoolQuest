@@ -34,31 +34,15 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Middleware to add CORS headers to static files
-@app.middleware("http")
-async def add_cors_header_to_static_files(request, call_next):
-    response = await call_next(request)
-    # Add CORS headers to media and uploads paths
-    if request.url.path.startswith("/media") or request.url.path.startswith("/uploads"):
+# Custom StaticFiles to handle CORS and CORB
+class CORSStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
-        response.headers["Access-Control-Expose-Headers"] = "*"
-        
-        # Ensure proper Content-Type for images to prevent CORB
-        path = request.url.path.lower()
-        if path.endswith('.jpg') or path.endswith('.jpeg'):
-            response.headers["Content-Type"] = "image/jpeg"
-        elif path.endswith('.png'):
-            response.headers["Content-Type"] = "image/png"
-        elif path.endswith('.gif'):
-            response.headers["Content-Type"] = "image/gif"
-        elif path.endswith('.webp'):
-            response.headers["Content-Type"] = "image/webp"
-        elif path.endswith('.svg'):
-            response.headers["Content-Type"] = "image/svg+xml"
-    return response
+        return response
 
 # Criar tabelas
 models.Base.metadata.create_all(bind=database.engine)
@@ -75,10 +59,10 @@ app.include_router(system.router)
 app.include_router(clans.router)
 
 # Static files
-app.mount("/media", StaticFiles(directory="media"), name="media")
+app.mount("/media", CORSStaticFiles(directory="media"), name="media")
 # Mount uploads directory for avatars
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", CORSStaticFiles(directory="uploads"), name="uploads")
 
 
 @app.websocket("/ws/{user_id}")

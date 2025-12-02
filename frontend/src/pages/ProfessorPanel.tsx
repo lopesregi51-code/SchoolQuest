@@ -519,7 +519,7 @@ export const ProfessorPanel: React.FC = () => {
                         {pendingMissions.length === 0 ? (
                             <p className="text-gray-400">Nenhuma missão pendente de validação.</p>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                                 {pendingMissions
                                     .filter(pending =>
                                         pending.aluno_nome.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -572,7 +572,7 @@ export const ProfessorPanel: React.FC = () => {
                         {completedMissions.length === 0 ? (
                             <p className="text-gray-400">Nenhuma missão concluída ainda.</p>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                                 {completedMissions.map((completion) => (
                                     <div key={completion.id} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
                                         <div>
