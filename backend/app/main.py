@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,10 +71,25 @@ async def get_uploaded_file(file_path: str):
     
     # Security check to prevent directory traversal
     if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("uploads")):
-        raise HTTPException(status_code=404, detail="File not found")
+        # Retornar SVG placeholder
+        svg_content = """
+        <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f8d7da"/>
+            <text x="50%" y="50%" font-family="Arial" font-size="16" fill="#721c24" text-anchor="middle" dy=".3em">Acesso Negado</text>
+        </svg>
+        """
+        return Response(content=svg_content, media_type="image/svg+xml")
 
     if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail="File not found")
+        # Retornar SVG placeholder em vez de 404 JSON para evitar CORB
+        svg_content = """
+        <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#e2e3e5"/>
+            <text x="50%" y="50%" font-family="Arial" font-size="16" fill="#383d41" text-anchor="middle" dy=".3em">Imagem não encontrada</text>
+            <text x="50%" y="65%" font-family="Arial" font-size="12" fill="#383d41" text-anchor="middle" dy=".3em">(Provavelmente deletada)</text>
+        </svg>
+        """
+        return Response(content=svg_content, media_type="image/svg+xml")
         
     return FileResponse(full_path)
 
