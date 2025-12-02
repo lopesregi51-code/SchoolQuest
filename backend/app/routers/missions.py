@@ -183,6 +183,22 @@ async def create_missao(missao: schemas.MissaoCreate, db: Session = Depends(get_
         
     return db_missao
 
+@router.get("/turmas")
+def list_turmas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """List all turmas/series from the current user's school."""
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores e gestores podem acessar turmas")
+    
+    # Get all series from the user's school
+    logger.info(f"Fetching turmas for user {current_user.nome} (escola_id: {current_user.escola_id})")
+    
+    series = db.query(models.Serie).filter(
+        models.Serie.escola_id == current_user.escola_id
+    ).all()
+    
+    logger.info(f"Found {len(series)} turmas")
+    return [{"id": s.id, "nome": s.nome} for s in series]
+
 @router.delete("/{missao_id}")
 def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Deletar uma missão (apenas o criador ou gestor)."""
@@ -506,19 +522,3 @@ def validar_missao_presencial(
     db.commit()
     
     return {"message": f"Missão validada para {aluno.nome}!", "status": "created_and_validated", "aluno": aluno.nome}
-
-@router.get("/turmas")
-def list_turmas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """List all turmas/series from the current user's school."""
-    if current_user.papel not in ['professor', 'gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Apenas professores e gestores podem acessar turmas")
-    
-    # Get all series from the user's school
-    logger.info(f"Fetching turmas for user {current_user.nome} (escola_id: {current_user.escola_id})")
-    
-    series = db.query(models.Serie).filter(
-        models.Serie.escola_id == current_user.escola_id
-    ).all()
-    
-    logger.info(f"Found {len(series)} turmas")
-    return [{"id": s.id, "nome": s.nome} for s in series]
