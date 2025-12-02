@@ -50,17 +50,29 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
     """Listar todas as missões disponíveis."""
     try:
         if current_user.papel == 'aluno':
-            logger.info(f"Fetching missions for student: {current_user.nome} (escola_id: {current_user.escola_id})")
+            logger.info(f"Fetching missions for student: {current_user.nome} (escola_id: {current_user.escola_id}, serie_id: {current_user.serie_id})")
             
-            # Students see missions from their school - using JOIN instead of subquery
+            # Students see missions from their school (individual and turma types)
             missoes = db.query(models.Missao).join(
                 models.User, models.Missao.criador_id == models.User.id
             ).filter(
                 models.User.escola_id == current_user.escola_id,
-                models.Missao.tipo != 'clan'
+                models.Missao.tipo.in_(['individual', 'turma'])
             ).all()
             
-            logger.info(f"Found {len(missoes)} school missions for student {current_user.nome}")
+            # Filter turma missions - only show if student belongs to that turma
+            filtered_missoes = []
+            for missao in missoes:
+                if missao.tipo == 'turma':
+                    # Only include if student's serie_id matches mission's turma_id
+                    if missao.turma_id and current_user.serie_id == missao.turma_id:
+                        filtered_missoes.append(missao)
+                else:
+                    # Include all individual missions
+                    filtered_missoes.append(missao)
+            
+            missoes = filtered_missoes
+            logger.info(f"Found {len(missoes)} school/turma missions for student {current_user.nome}")
             
             # Add clan missions if student is in a clan
             clan_member = db.query(models.ClanMember).filter(models.ClanMember.user_id == current_user.id).first()
@@ -78,6 +90,12 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                 # Get professor info
                 criador = db.query(models.User).filter(models.User.id == missao.criador_id).first()
                 
+                # Get turma name if applicable
+                turma_nome = None
+                if missao.tipo == 'turma' and missao.turma_id:
+                    serie = db.query(models.Serie).filter(models.Serie.id == missao.turma_id).first()
+                    turma_nome = serie.nome if serie else None
+                
                 missao_dict = {
                     "id": missao.id,
                     "titulo": missao.titulo,
@@ -88,6 +106,7 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                     "criador_id": missao.criador_id,
                     "criador_nome": criador.nome if criador else None,
                     "criador_disciplina": criador.disciplina if criador else None,
+                    "turma_nome": turma_nome,
                     "tipo": missao.tipo,
                     "clan_id": missao.clan_id,
                     "criado_em": missao.criado_em,
@@ -487,3 +506,16 @@ def validar_missao_presencial(
     db.commit()
     
     return {"message": f"Missão validada para {aluno.nome}!", "status": "created_and_validated", "aluno": aluno.nome}
+
+@router.get("/turmas")
+def list_turmas(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """List all turmas/series from the current user's school."""
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores e gestores podem acessar turmas")
+    
+    # Get all series from the user's school
+    series = db.query(models.Serie).filter(
+        models.Serie.escola_id == current_user.escola_id
+    ).all()
+    
+    return [{"id": s.id, "nome": s.nome} for s in series]
