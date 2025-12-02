@@ -18,6 +18,7 @@ export const ProfessorPanel: React.FC = () => {
     const [completedMissions, setCompletedMissions] = useState<any[]>([]);
     const [clans, setClans] = useState<any[]>([]);
     const [turmas, setTurmas] = useState<any[]>([]);
+    const [filterText, setFilterText] = useState('');
     const [formData, setFormData] = useState({
         titulo: '',
         descricao: '',
@@ -465,45 +466,60 @@ export const ProfessorPanel: React.FC = () => {
 
                     {/* Pending Missions */}
                     <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                             <h2 className="text-2xl font-bold flex items-center gap-2">
                                 <CheckCircle className="w-6 h-6 text-yellow-400" />
                                 Missões Pendentes de Validação
                             </h2>
+                            <div className="w-full md:w-64">
+                                <input
+                                    type="text"
+                                    placeholder="Filtrar por aluno, missão..."
+                                    value={filterText}
+                                    onChange={(e) => setFilterText(e.target.value)}
+                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
                         </div>
                         {pendingMissions.length === 0 ? (
                             <p className="text-gray-400">Nenhuma missão pendente de validação.</p>
                         ) : (
                             <div className="space-y-3">
-                                {pendingMissions.map((pending) => (
-                                    <div key={pending.id} className="bg-gray-700 p-4 rounded-lg border border-yellow-600/30">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <h3 className="font-bold text-lg">{pending.missao_titulo}</h3>
-                                                <p className="text-sm text-gray-300">
-                                                    Aluno: {pending.aluno_nome} ({pending.aluno_serie})
-                                                </p>
-                                                <p className="text-xs text-gray-400">
-                                                    Enviada em: {new Date(pending.data_solicitacao).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleValidateMission(pending.id, true)}
-                                                    className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold text-sm transition-colors"
-                                                >
-                                                    Aprovar
-                                                </button>
-                                                <button
-                                                    onClick={() => handleValidateMission(pending.id, false)}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-sm transition-colors"
-                                                >
-                                                    Rejeitar
-                                                </button>
+                                {pendingMissions
+                                    .filter(pending =>
+                                        pending.aluno_nome.toLowerCase().includes(filterText.toLowerCase()) ||
+                                        pending.missao_titulo.toLowerCase().includes(filterText.toLowerCase()) ||
+                                        (pending.aluno_serie && pending.aluno_serie.toLowerCase().includes(filterText.toLowerCase()))
+                                    )
+                                    .map((pending) => (
+                                        <div key={pending.id} className="bg-gray-700 p-4 rounded-lg border border-yellow-600/30">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <h3 className="font-bold text-lg">{pending.missao_titulo}</h3>
+                                                    <p className="text-sm text-gray-300">
+                                                        Aluno: {pending.aluno_nome} ({pending.aluno_serie})
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        Enviada em: {new Date(pending.data_solicitacao).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleValidateMission(pending.id, true)}
+                                                        className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold text-sm transition-colors"
+                                                    >
+                                                        Aprovar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleValidateMission(pending.id, false)}
+                                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-sm transition-colors"
+                                                    >
+                                                        Rejeitar
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         )}
                     </div>
