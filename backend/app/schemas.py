@@ -84,6 +84,8 @@ class MissaoCreate(MissaoBase):
 class MissaoResponse(MissaoBase):
     id: int
     criador_id: int
+    criador_nome: Optional[str] = None
+    criador_disciplina: Optional[str] = None
     status: Optional[str] = "disponivel"
     tipo: str
     clan_id: Optional[int] = None

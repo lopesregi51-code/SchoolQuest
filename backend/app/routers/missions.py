@@ -75,6 +75,9 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
             # Add status for each mission
             result = []
             for missao in missoes:
+                # Get professor info
+                criador = db.query(models.User).filter(models.User.id == missao.criador_id).first()
+                
                 missao_dict = {
                     "id": missao.id,
                     "titulo": missao.titulo,
@@ -83,6 +86,8 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                     "moedas": missao.moedas,
                     "categoria": missao.categoria,
                     "criador_id": missao.criador_id,
+                    "criador_nome": criador.nome if criador else None,
+                    "criador_disciplina": criador.disciplina if criador else None,
                     "tipo": missao.tipo,
                     "clan_id": missao.clan_id,
                     "criado_em": missao.criado_em,

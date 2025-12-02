@@ -14,6 +14,8 @@ interface Mission {
     pontos: number;
     moedas: number;
     categoria: string;
+    criador_nome?: string;
+    criador_disciplina?: string;
     status: 'disponivel' | 'pendente' | 'aprovada';
 }
 
@@ -288,50 +290,62 @@ export const StudentDashboard: React.FC = () => {
                                 } no momento.</p>
                             </div>
                         ) : (
-                            <div className="grid md:grid-cols-1 gap-4">
+                            <div className="grid md:grid-cols-2 gap-3">
                                 {missions.filter(m => m.status === activeTab).map((mission) => (
                                     <div
                                         key={mission.id}
-                                        className={`bg-gray-700/50 p-4 rounded-xl border transition-all hover:bg-gray-700 ${activeTab === 'disponivel' ? 'border-gray-600 hover:border-primary' :
+                                        className={`bg-gray-700/50 p-3 rounded-lg border transition-all hover:bg-gray-700 ${activeTab === 'disponivel' ? 'border-gray-600 hover:border-primary' :
                                             activeTab === 'pendente' ? 'border-yellow-500/30' :
                                                 'border-green-500/30'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-bold text-lg mb-1">{mission.titulo}</h3>
-                                                <span className="px-2 py-0.5 bg-blue-900/50 text-blue-200 text-xs rounded-full border border-blue-500/30">
-                                                    {mission.categoria}
-                                                </span>
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-base mb-1">{mission.titulo}</h3>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="px-2 py-0.5 bg-blue-900/50 text-blue-200 text-xs rounded border border-blue-500/30">
+                                                        {mission.categoria}
+                                                    </span>
+                                                    {mission.criador_nome && (
+                                                        <span className="text-xs text-gray-400">
+                                                            👤 {mission.criador_nome}
+                                                        </span>
+                                                    )}
+                                                    {mission.criador_disciplina && (
+                                                        <span className="text-xs text-gray-400">
+                                                            📚 {mission.criador_disciplina}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2 text-sm font-mono">
-                                                <span className="text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">+{mission.pontos} XP</span>
-                                                <span className="text-green-400 bg-green-400/10 px-2 py-1 rounded">+{mission.moedas} 🪙</span>
+                                            <div className="flex gap-1.5 text-xs font-mono ml-2">
+                                                <span className="text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">+{mission.pontos}</span>
+                                                <span className="text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">+{mission.moedas}🪙</span>
                                             </div>
                                         </div>
 
-                                        <p className="text-gray-300 text-sm mb-4">{mission.descricao}</p>
+                                        <p className="text-gray-300 text-xs mb-2 line-clamp-2">{mission.descricao}</p>
 
                                         <div className="flex justify-end">
                                             {activeTab === 'disponivel' && (
                                                 <button
                                                     onClick={() => completeMission(mission.id)}
-                                                    className="px-6 py-2 bg-primary hover:bg-blue-600 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-600/20"
+                                                    className="px-4 py-1.5 bg-primary hover:bg-blue-600 rounded text-xs font-bold transition-colors"
                                                 >
-                                                    Completar Missão
+                                                    Completar
                                                 </button>
                                             )}
 
                                             {activeTab === 'pendente' && (
-                                                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-full border border-yellow-500/50 flex items-center gap-2">
-                                                    <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                                                    Aguardando Validação
+                                                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
+                                                    Em Análise
                                                 </span>
                                             )}
 
                                             {activeTab === 'aprovada' && (
-                                                <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/50 flex items-center gap-2">
-                                                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                                <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                                                     Aprovada
                                                 </span>
                                             )}
