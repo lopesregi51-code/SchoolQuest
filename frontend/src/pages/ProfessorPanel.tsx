@@ -56,10 +56,20 @@ export const ProfessorPanel: React.FC = () => {
 
     const fetchTurmas = async () => {
         try {
+            console.log('Fetching turmas...');
             const response = await apiClient.get('/missoes/turmas');
-            setTurmas(response.data);
+            console.log('Turmas response:', response.data);
+
+            if (Array.isArray(response.data)) {
+                setTurmas(response.data);
+                console.log('Turmas state updated with', response.data.length, 'items');
+            } else {
+                console.error('Invalid turmas response format:', response.data);
+                setTurmas([]);
+            }
         } catch (error) {
             console.error('Erro ao buscar turmas', error);
+            setTurmas([]);
         }
     };
 
@@ -375,9 +385,13 @@ export const ProfessorPanel: React.FC = () => {
                                             required
                                         >
                                             <option value="">Selecione uma turma...</option>
-                                            {turmas.map(turma => (
-                                                <option key={turma.id} value={turma.id}>{turma.nome}</option>
-                                            ))}
+                                            {turmas.length === 0 ? (
+                                                <option value="" disabled>Nenhuma turma encontrada</option>
+                                            ) : (
+                                                turmas.map(turma => (
+                                                    <option key={turma.id} value={turma.id}>{turma.nome}</option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                 )}

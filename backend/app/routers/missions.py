@@ -514,8 +514,11 @@ def list_turmas(db: Session = Depends(get_db), current_user: models.User = Depen
         raise HTTPException(status_code=403, detail="Apenas professores e gestores podem acessar turmas")
     
     # Get all series from the user's school
+    logger.info(f"Fetching turmas for user {current_user.nome} (escola_id: {current_user.escola_id})")
+    
     series = db.query(models.Serie).filter(
         models.Serie.escola_id == current_user.escola_id
     ).all()
     
+    logger.info(f"Found {len(series)} turmas")
     return [{"id": s.id, "nome": s.nome} for s in series]
