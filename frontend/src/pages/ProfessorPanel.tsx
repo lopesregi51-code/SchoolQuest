@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Plus, LogOut, CheckCircle, QrCode, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, LogOut, CheckCircle, QrCode, Trash2, MessageSquare, ShoppingBag } from 'lucide-react';
 import apiClient from '../api/client';
 import { Ranking } from '../components/Ranking';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
+import { Link } from 'react-router-dom';
 
 
 
@@ -226,18 +227,34 @@ export const ProfessorPanel: React.FC = () => {
     return (
         <div className="min-h-screen bg-dark text-white p-6">
             {/* Header */}
-            <header className="mb-8 flex justify-between items-center">
+            <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Painel do Professor</h1>
                     <p className="text-gray-400">Gerencie missões e alunos{user?.escola_nome ? ` • ${user.escola_nome}` : ''}</p>
                 </div>
-                <button
-                    onClick={logout}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Sair
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        to="/mural"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                    >
+                        <MessageSquare className="w-4 h-4" />
+                        Mural
+                    </Link>
+                    <Link
+                        to="/shop"
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
+                    >
+                        <ShoppingBag className="w-4 h-4" />
+                        Lojinha
+                    </Link>
+                    <button
+                        onClick={logout}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Sair
+                    </button>
+                </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

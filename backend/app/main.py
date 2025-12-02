@@ -44,6 +44,20 @@ async def add_cors_header_to_static_files(request, call_next):
         response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        
+        # Ensure proper Content-Type for images to prevent CORB
+        path = request.url.path.lower()
+        if path.endswith('.jpg') or path.endswith('.jpeg'):
+            response.headers["Content-Type"] = "image/jpeg"
+        elif path.endswith('.png'):
+            response.headers["Content-Type"] = "image/png"
+        elif path.endswith('.gif'):
+            response.headers["Content-Type"] = "image/gif"
+        elif path.endswith('.webp'):
+            response.headers["Content-Type"] = "image/webp"
+        elif path.endswith('.svg'):
+            response.headers["Content-Type"] = "image/svg+xml"
     return response
 
 # Criar tabelas
