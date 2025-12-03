@@ -93,6 +93,7 @@ class Missao(Base):
     clan_id = Column(Integer, ForeignKey("clans.id"), nullable=True)
     
     data_limite = Column(DateTime, nullable=True)
+    ativa = Column(Boolean, default=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
 
 class MissaoConcluida(Base):

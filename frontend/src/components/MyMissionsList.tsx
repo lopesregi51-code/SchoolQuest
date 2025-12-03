@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { QrCode, Trash2, Search } from 'lucide-react';
+import { QrCode, Trash2, Search, StopCircle } from 'lucide-react';
 
 interface Mission {
     id: number;
@@ -14,12 +14,14 @@ interface MyMissionsListProps {
     missions: Mission[];
     onDelete: (id: number) => void;
     onOpenQrScanner: (id: number) => void;
+    onCloseMission: (id: number) => void;
 }
 
 export const MyMissionsList: React.FC<MyMissionsListProps> = ({
     missions,
     onDelete,
-    onOpenQrScanner
+    onOpenQrScanner,
+    onCloseMission
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -78,6 +80,13 @@ export const MyMissionsList: React.FC<MyMissionsListProps> = ({
                                         title="Validar com QR Code"
                                     >
                                         <QrCode className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => onCloseMission(mission.id)}
+                                        className="p-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg transition-colors"
+                                        title="Encerrar missão (ninguém mais poderá ver)"
+                                    >
+                                        <StopCircle className="w-5 h-5" />
                                     </button>
                                     <button
                                         onClick={() => onDelete(mission.id)}

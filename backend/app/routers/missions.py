@@ -57,7 +57,8 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                 models.User, models.Missao.criador_id == models.User.id
             ).filter(
                 models.User.escola_id == current_user.escola_id,
-                models.Missao.tipo.in_(['individual', 'turma'])
+                models.Missao.tipo.in_(['individual', 'turma']),
+                models.Missao.ativa == True
             ).all()
             
             # Filter turma missions - only show if student belongs to that turma
@@ -79,7 +80,8 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
             if clan_member:
                 clan_missions = db.query(models.Missao).filter(
                     models.Missao.tipo == 'clan',
-                    models.Missao.clan_id == clan_member.clan_id
+                    models.Missao.clan_id == clan_member.clan_id,
+                    models.Missao.ativa == True
                 ).all()
                 logger.info(f"Found {len(clan_missions)} clan missions for student {current_user.nome}")
                 missoes.extend(clan_missions)

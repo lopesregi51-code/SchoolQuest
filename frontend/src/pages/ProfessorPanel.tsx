@@ -41,7 +41,8 @@ export const ProfessorPanel: React.FC = () => {
     const fetchMyMissions = async () => {
         try {
             const response = await apiClient.get('/missoes/');
-            const my = response.data.filter((m: any) => m.criador_id === user?.id);
+            // Filtra apenas as missões criadas pelo professor E que estão ativas
+            const my = response.data.filter((m: any) => m.criador_id === user?.id && m.ativa !== false);
             setMyMissions(my);
         } catch (error) {
             console.error('Erro ao buscar minhas missões', error);
@@ -162,6 +163,17 @@ export const ProfessorPanel: React.FC = () => {
         }
     };
 
+    const handleCloseMission = async (id: number) => {
+        if (!confirm('Tem certeza que deseja encerrar esta missão? Ela não ficará mais visível para os alunos.')) return;
+        try {
+            await apiClient.post(`/missoes/${id}/encerrar`);
+            alert('Missão encerrada com sucesso!');
+            fetchMyMissions(); // Atualiza a lista para remover a missão encerrada
+        } catch (error: any) {
+            alert(error.response?.data?.detail || 'Erro ao encerrar missão');
+        }
+    };
+
     const validateQrCode = async (qrData: string) => {
         if (!validatingMissionId) return;
 
@@ -223,6 +235,7 @@ export const ProfessorPanel: React.FC = () => {
                             missions={myMissions}
                             onDelete={handleDeleteMission}
                             onOpenQrScanner={setValidatingMissionId}
+                            onCloseMission={handleCloseMission}
                         />
 
                         <PendingMissionsList
