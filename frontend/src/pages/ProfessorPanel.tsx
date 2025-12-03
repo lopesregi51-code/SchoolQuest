@@ -8,11 +8,13 @@ import { MyMissionsList } from '../components/MyMissionsList';
 import { PendingMissionsList } from '../components/PendingMissionsList';
 import { CompletedMissionsList } from '../components/CompletedMissionsList';
 import { QrCodeScanner } from '../components/QrCodeScanner';
+import { ProfessorShopModal } from '../components/ProfessorShopSection';
 
 export const ProfessorPanel: React.FC = () => {
     const { user, logout } = useAuth();
     const [isCreating, setIsCreating] = useState(false);
     const [validatingMissionId, setValidatingMissionId] = useState<number | null>(null);
+    const [showShopModal, setShowShopModal] = useState(false);
 
     const [myMissions, setMyMissions] = useState<any[]>([]);
     const [pendingMissions, setPendingMissions] = useState<any[]>([]);
@@ -138,7 +140,9 @@ export const ProfessorPanel: React.FC = () => {
 
     const handleApproveMission = async (id: number) => {
         try {
-            await apiClient.post(`/missoes/${id}/validar`);
+            await apiClient.post(`/missoes/validar/${id}`, null, {
+                params: { aprovado: true }
+            });
             alert('Missão aprovada!');
             fetchPendingMissions();
             fetchCompletedMissions();
@@ -150,7 +154,9 @@ export const ProfessorPanel: React.FC = () => {
     const handleRejectMission = async (id: number) => {
         if (!confirm('Tem certeza que deseja rejeitar esta missão?')) return;
         try {
-            await apiClient.post(`/missoes/${id}/rejeitar`);
+            await apiClient.post(`/missoes/validar/${id}`, null, {
+                params: { aprovado: false }
+            });
             alert('Missão rejeitada!');
             fetchPendingMissions();
         } catch (error: any) {
@@ -201,6 +207,7 @@ export const ProfessorPanel: React.FC = () => {
                 <ProfessorHeader
                     schoolName={user?.escola_nome}
                     onLogout={logout}
+                    onOpenShop={() => setShowShopModal(true)}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -240,6 +247,11 @@ export const ProfessorPanel: React.FC = () => {
                     missionId={validatingMissionId}
                     onClose={() => setValidatingMissionId(null)}
                     onScan={validateQrCode}
+                />
+
+                <ProfessorShopModal
+                    isOpen={showShopModal}
+                    onClose={() => setShowShopModal(false)}
                 />
             </div>
         </div>
