@@ -6,6 +6,7 @@ interface CompletedMission {
     missao_titulo: string;
     aluno_nome: string;
     aluno_id: number;
+    aluno_serie?: string;
     data_validacao: string;
 }
 
