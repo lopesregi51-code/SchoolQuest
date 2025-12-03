@@ -67,6 +67,7 @@ class User(Base):
     mural_posts = relationship("MuralPost", back_populates="user", cascade="all, delete-orphan")
     device_tokens = relationship("DeviceToken", back_populates="user", cascade="all, delete-orphan")
     clan_memberships = relationship("ClanMember", back_populates="user", cascade="all, delete-orphan")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
     
     criado_em = Column(DateTime, default=datetime.utcnow)
 
@@ -287,6 +288,19 @@ class DeviceToken(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="device_tokens")
+
+class PushSubscription(Base):
+    """Modelo para assinaturas Web Push (PWA)"""
+    __tablename__ = "push_subscriptions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    endpoint = Column(String, unique=True, index=True)
+    p256dh = Column(String)
+    auth = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="push_subscriptions")
 
 class ClanMessage(Base):
     """Modelo para mensagens de chat do clã"""

@@ -220,16 +220,19 @@ def completar_missao(missao_id: int, db: Session = Depends(get_db), current_user
     if current_user.papel != 'aluno':
         raise HTTPException(status_code=403, detail="Apenas alunos podem completar missões")
     
-    # Validate mission exists and belongs to student's school
-    missao = db.query(models.Missao).join(
-        models.User, models.Missao.criador_id == models.User.id
-    ).filter(
-        models.Missao.id == missao_id,
-        models.User.escola_id == current_user.escola_id
+    # Validate mission exists
+    missao = db.query(models.Missao).filter(
+        models.Missao.id == missao_id
     ).first()
     
     if not missao:
-        raise HTTPException(status_code=404, detail="Missão não encontrada ou não pertence à sua escola")
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+    
+    # Validate mission belongs to student's school (if both have school assigned)
+    criador = db.query(models.User).filter(models.User.id == missao.criador_id).first()
+    if current_user.escola_id and criador and criador.escola_id:
+        if current_user.escola_id != criador.escola_id:
+            raise HTTPException(status_code=403, detail="Esta missão não pertence à sua escola")
     
     # Validate clan missions
     if missao.tipo == 'clan':
