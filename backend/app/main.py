@@ -54,6 +54,18 @@ app.include_router(chat.router)
 app.include_router(mobile.router)
 app.include_router(analytics.router)
 app.include_router(missions.router)
+app.include_router(admin.router)
+app.include_router(system.router)
+app.include_router(clans.router)
+
+# Serve uploaded files with FileResponse to prevent CORB
+@app.get("/media/{file_path:path}")
+async def get_media_file(file_path: str):
+    """Serve media files with correct Content-Type to prevent CORB."""
+    full_path = os.path.join("media", file_path)
+    
+    # Security check to prevent directory traversal
+    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("media")):
         svg_content = """
         <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#f8d7da"/>
