@@ -460,6 +460,24 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
 
 
 
+@router.post("/{missao_id}/encerrar")
+def encerrar_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Encerrar uma missão (torná-la inativa)."""
+    if current_user.papel not in ['professor', 'gestor']:
+        raise HTTPException(status_code=403, detail="Apenas professores podem encerrar missões")
+        
+    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
+    if not missao:
+        raise HTTPException(status_code=404, detail="Missão não encontrada")
+        
+    if missao.criador_id != current_user.id and current_user.papel != 'gestor':
+        raise HTTPException(status_code=403, detail="Você só pode encerrar suas próprias missões")
+        
+    missao.ativa = False
+    db.commit()
+    
+    return {"message": "Missão encerrada com sucesso!"}
+
 @router.post("/{missao_id}/validar_presencial")
 def validar_missao_presencial(
     missao_id: int,

@@ -49,6 +49,13 @@ app.include_router(clans.router)
 
 # Ensure directories exist
 os.makedirs("media", exist_ok=True)
+
+# Run migrations on startup (to ensure 'ativa' column exists)
+from migrate_missions import migrate
+try:
+    migrate()
+except Exception as e:
+    print(f"Migration warning: {e}")
 os.makedirs("uploads", exist_ok=True)
 
 # Serve media files with FileResponse to prevent CORB
