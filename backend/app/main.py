@@ -36,6 +36,17 @@ app.add_middleware(
 # Criar tabelas
 models.Base.metadata.create_all(bind=database.engine)
 
+# Run reverse migration to remove 'ativa' column if it exists
+try:
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from remove_ativa_column import remove_ativa_column
+    remove_ativa_column()
+    logger.info("Reverse migration completed successfully")
+except Exception as e:
+    logger.warning(f"Reverse migration warning: {e}")
+
+
 # Routers
 app.include_router(shop.router)
 app.include_router(mural.router)
@@ -43,29 +54,6 @@ app.include_router(chat.router)
 app.include_router(mobile.router)
 app.include_router(analytics.router)
 app.include_router(missions.router)
-app.include_router(admin.router)
-app.include_router(system.router)
-app.include_router(clans.router)
-
-# Ensure directories exist
-os.makedirs("media", exist_ok=True)
-
-# Run migrations on startup (to ensure 'ativa' column exists)
-from migrate_missions import migrate
-try:
-    migrate()
-except Exception as e:
-    print(f"Migration warning: {e}")
-os.makedirs("uploads", exist_ok=True)
-
-# Serve media files with FileResponse to prevent CORB
-@app.get("/media/{file_path:path}")
-async def serve_media(file_path: str):
-    """Serve media files with correct Content-Type to prevent CORB."""
-    full_path = os.path.join("media", file_path)
-    
-    # Security check to prevent directory traversal
-    if ".." in file_path or not os.path.abspath(full_path).startswith(os.path.abspath("media")):
         svg_content = """
         <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#f8d7da"/>
