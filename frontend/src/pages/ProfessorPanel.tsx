@@ -311,13 +311,13 @@ export const ProfessorPanel: React.FC = () => {
                         <MessageSquare className="w-4 h-4" />
                         Mural
                     </Link>
-                    <button
-                        onClick={() => setShowShopManager(!showShopManager)}
+                    <Link
+                        to="/professor/shop"
                         className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
                     >
                         <ShoppingBag className="w-4 h-4" />
-                        Gerenciar Loja
-                    </button>
+                        Lojinha
+                    </Link>
                     <button
                         onClick={logout}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"

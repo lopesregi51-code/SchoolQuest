@@ -12,6 +12,7 @@ import { ManagerPanel } from './pages/ManagerPanel';
 import { AdminPanel } from './pages/AdminPanel';
 import { MuralPage } from './pages/MuralPage';
 import { ShopPage } from './pages/ShopPage';
+import ProfessorShopPage from './pages/ProfessorShopPage';
 import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import { QrHandler } from './pages/QrHandler';
 import { BookOpen, Shield, Trophy } from 'lucide-react';
@@ -161,6 +162,11 @@ function App() {
             <Route path="/analytics" element={
               <ProtectedRoute allowedRoles={['gestor', 'admin']}>
                 <AnalyticsDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/professor/shop" element={
+              <ProtectedRoute allowedRoles={['professor']}>
+                <ProfessorShopPage />
               </ProtectedRoute>
             } />
             <Route path="/professor" element={<Navigate to="/" replace />} />
