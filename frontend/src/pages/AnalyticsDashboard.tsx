@@ -5,7 +5,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import apiClient from '../api/client';
-import { TrendingUp, Users, Target, Award, Download, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Users, Target, Award, Download, ArrowLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -15,7 +15,7 @@ export const AnalyticsDashboard: React.FC = () => {
     const [timeline, setTimeline] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [schools, setSchools] = useState<any[]>([]);
     const [selectedSchool, setSelectedSchool] = useState<string>('');
     const navigate = useNavigate();
@@ -118,9 +118,9 @@ export const AnalyticsDashboard: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate(-1)}
-                            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+                            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
                         >
-                            <ArrowLeft className="w-6 h-6" />
+                            <ArrowLeft className="w-6 h-6" /> Voltar
                         </button>
                         <h1 className="text-4xl font-bold">📊 Analytics Dashboard</h1>
                     </div>
@@ -157,6 +157,12 @@ export const AnalyticsDashboard: React.FC = () => {
                             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
                         >
                             <Download className="w-4 h-4" /> Excel
+                        </button>
+                        <button
+                            onClick={logout}
+                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" /> Sair
                         </button>
                     </div>
                 </div>

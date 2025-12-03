@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Users, UserPlus, LogOut, Mail, Check, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Shield, Users, UserPlus, LogOut, Mail, Check, Trash2, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ClanChat } from '../components/ClanChat';
 
 interface Clan {
@@ -28,7 +28,8 @@ interface ClanInvite {
 }
 
 export const ClanPage: React.FC = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [clan, setClan] = useState<Clan | null>(null);
     const [members, setMembers] = useState<ClanMember[]>([]);
     const [invites, setInvites] = useState<ClanInvite[]>([]);
@@ -166,6 +167,20 @@ export const ClanPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#121214] text-gray-100 p-6 font-sans">
             <div className="max-w-5xl mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Voltar
+                    </button>
+                    <button
+                        onClick={logout}
+                        className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" /> Sair
+                    </button>
+                </div>
                 {!clan ? (
                     <div className="space-y-12">
                         <header className="text-center mb-12">

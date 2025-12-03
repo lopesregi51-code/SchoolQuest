@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
-import { User, Shield, BookOpen, Image, ArrowLeft, Trash2, Upload, Gift, QrCode } from 'lucide-react';
+import { User, Shield, BookOpen, Image, ArrowLeft, Trash2, Upload, Gift, QrCode, LogOut } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 
 interface UserProfileData {
@@ -41,7 +41,7 @@ interface UserProfileData {
 
 export const UserProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, logout } = useAuth();
     const navigate = useNavigate();
     const [profile, setProfile] = useState<UserProfileData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -175,12 +175,20 @@ export const UserProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-dark text-white p-6">
-            <button
-                onClick={() => navigate(-1)}
-                className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-            >
-                <ArrowLeft className="w-5 h-5" /> Voltar
-            </button>
+            <div className="flex justify-between items-center mb-6">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                >
+                    <ArrowLeft className="w-5 h-5" /> Voltar
+                </button>
+                <button
+                    onClick={logout}
+                    className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                >
+                    <LogOut className="w-5 h-5" /> Sair
+                </button>
+            </div>
 
             <div className="max-w-4xl mx-auto space-y-8">
                 {/* Header Card */}

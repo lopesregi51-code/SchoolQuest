@@ -11,6 +11,7 @@ interface User {
     xp: number;
     nivel: number;
     serie?: string;
+    disciplina?: string;
     escola_id?: number;
     escola_nome?: string;
     bio?: string;

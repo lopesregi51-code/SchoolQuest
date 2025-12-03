@@ -2,19 +2,25 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { LogOut, MessageSquare, ShoppingBag } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfessorHeaderProps {
     schoolName?: string;
     onLogout: () => void;
+    onOpenShop?: () => void;
 }
 
-export const ProfessorHeader: React.FC<ProfessorHeaderProps> = ({ schoolName, onLogout }) => {
+export const ProfessorHeader: React.FC<ProfessorHeaderProps> = ({ schoolName, onLogout, onOpenShop }) => {
+    const { user } = useAuth();
+
     return (
         <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 className="text-3xl font-bold">Painel do Professor</h1>
                 <p className="text-gray-400">
-                    Gerencie missões e alunos{schoolName ? ` • ${schoolName}` : ''}
+                    {user?.nome && <span className="font-medium text-purple-400">{user.nome}</span>}
+                    {user?.disciplina && <span> • {user.disciplina}</span>}
+                    {schoolName && <span> • {schoolName}</span>}
                 </p>
             </div>
             <div className="flex items-center gap-3">
@@ -26,13 +32,15 @@ export const ProfessorHeader: React.FC<ProfessorHeaderProps> = ({ schoolName, on
                     <MessageSquare className="w-4 h-4" />
                     Mural
                 </Link>
-                <Link
-                    to="/professor/shop"
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
-                >
-                    <ShoppingBag className="w-4 h-4" />
-                    Lojinha
-                </Link>
+                {onOpenShop && (
+                    <button
+                        onClick={onOpenShop}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
+                    >
+                        <ShoppingBag className="w-4 h-4" />
+                        Lojinha
+                    </button>
+                )}
                 <button
                     onClick={onLogout}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"

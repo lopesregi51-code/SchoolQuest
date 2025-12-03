@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { UserProfile } from './pages/UserProfile';
 import { ClanPage } from './pages/ClanPage';
@@ -12,7 +11,6 @@ import { ManagerPanel } from './pages/ManagerPanel';
 import { AdminPanel } from './pages/AdminPanel';
 import { MuralPage } from './pages/MuralPage';
 import { ShopPage } from './pages/ShopPage';
-import ProfessorShopPage from './pages/ProfessorShopPage';
 import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import { QrHandler } from './pages/QrHandler';
 import { BookOpen, Shield, Trophy } from 'lucide-react';
@@ -115,7 +113,6 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             <Route path="/qr/:userId/:token" element={<QrHandler />} />
             <Route
               path="/dashboard"
@@ -162,11 +159,6 @@ function App() {
             <Route path="/analytics" element={
               <ProtectedRoute allowedRoles={['gestor', 'admin']}>
                 <AnalyticsDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/professor/shop" element={
-              <ProtectedRoute allowedRoles={['professor']}>
-                <ProfessorShopPage />
               </ProtectedRoute>
             } />
             <Route path="/professor" element={<Navigate to="/" replace />} />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
-import { Heart, Trash2, Image as ImageIcon, Send } from 'lucide-react';
+import { Heart, Trash2, Image as ImageIcon, Send, LogOut, ArrowLeft } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface Post {
     id: number;
@@ -19,7 +19,8 @@ interface Post {
 }
 
 export const MuralPage: React.FC = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [posts, setPosts] = useState<Post[]>([]);
     const [newPostText, setNewPostText] = useState('');
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -104,6 +105,20 @@ export const MuralPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-dark text-white p-4">
             <div className="max-w-2xl mx-auto space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Voltar
+                    </button>
+                    <button
+                        onClick={logout}
+                        className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" /> Sair
+                    </button>
+                </div>
                 <header className="bg-gray-800 rounded-xl p-4 border border-gray-700 flex justify-between items-center">
                     <div>
                         <h1 className="text-xl font-bold">Mural da Escola</h1>

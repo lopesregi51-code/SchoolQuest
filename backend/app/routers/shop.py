@@ -79,8 +79,8 @@ def buy_reward(item_id: int, db: Session = Depends(get_db), current_user: User =
 # Manager endpoints for Rewards
 @router.post("/shop/items", response_model=RewardResponse)
 def create_reward(reward: RewardCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.papel not in ['gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Apenas gestores podem criar itens")
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores e gestores podem criar itens")
     
     db_reward = Reward(
         nome=reward.nome,
@@ -97,8 +97,8 @@ def create_reward(reward: RewardCreate, db: Session = Depends(get_db), current_u
 
 @router.put("/shop/items/{item_id}", response_model=RewardResponse)
 def update_reward(item_id: int, reward: RewardUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.papel not in ['gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    if current_user.papel not in ['professor', 'gestor', 'admin']:
+        raise HTTPException(status_code=403, detail="Apenas professores e gestores podem editar itens")
     
     db_reward = db.query(Reward).filter(Reward.id == item_id).first()
     if not db_reward:
@@ -117,7 +117,7 @@ def update_reward(item_id: int, reward: RewardUpdate, db: Session = Depends(get_
 @router.delete("/shop/items/{item_id}")
 def delete_reward(item_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.papel not in ['gestor', 'admin']:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=403, detail="Apenas gestores podem excluir itens")
     
     db_reward = db.query(Reward).filter(Reward.id == item_id).first()
     if not db_reward:

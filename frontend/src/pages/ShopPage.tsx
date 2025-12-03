@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, Star } from 'lucide-react';
+import { ShoppingBag, Star, LogOut, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Reward {
     id: number;
@@ -13,7 +14,8 @@ interface Reward {
 }
 
 export const ShopPage: React.FC = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [rewards, setRewards] = useState<Reward[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -55,6 +57,20 @@ export const ShopPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-dark text-white p-6">
             <div className="max-w-6xl mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Voltar
+                    </button>
+                    <button
+                        onClick={logout}
+                        className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" /> Sair
+                    </button>
+                </div>
                 <header className="mb-8 flex justify-between items-center bg-gray-800 p-6 rounded-xl border border-gray-700">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-900/50 rounded-xl">
