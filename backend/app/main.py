@@ -9,7 +9,7 @@ from datetime import timedelta
 import os
 
 from . import models, schemas, database, auth
-from .routers import shop, mural, chat, mobile, analytics, missions, admin, system, clans  # , notifications
+from .routers import shop, mural, chat, mobile, analytics, missions, admin, system, clans, notifications
 from .websocket import manager
 from .config import settings
 
@@ -46,7 +46,7 @@ app.include_router(missions.router)
 app.include_router(admin.router)
 app.include_router(system.router)
 app.include_router(clans.router)
-# app.include_router(notifications.router)  # Temporariamente desabilitado até resolver issue de deploy
+app.include_router(notifications.router)
 
 # Ensure directories exist
 os.makedirs("media", exist_ok=True)
