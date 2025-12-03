@@ -57,8 +57,7 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
                 models.User, models.Missao.criador_id == models.User.id
             ).filter(
                 models.User.escola_id == current_user.escola_id,
-                models.Missao.tipo.in_(['individual', 'turma']),
-                models.Missao.ativa == True
+                models.Missao.tipo.in_(['individual', 'turma'])
             ).all()
             
             # Filter turma missions - only show if student belongs to that turma
@@ -80,8 +79,7 @@ def read_missoes(db: Session = Depends(get_db), current_user: models.User = Depe
             if clan_member:
                 clan_missions = db.query(models.Missao).filter(
                     models.Missao.tipo == 'clan',
-                    models.Missao.clan_id == clan_member.clan_id,
-                    models.Missao.ativa == True
+                    models.Missao.clan_id == clan_member.clan_id
                 ).all()
                 logger.info(f"Found {len(clan_missions)} clan missions for student {current_user.nome}")
                 missoes.extend(clan_missions)
@@ -459,24 +457,6 @@ def validar_missao(submissao_id: int, aprovado: bool, db: Session = Depends(get_
     return {"message": message}
 
 
-
-@router.post("/{missao_id}/encerrar")
-def encerrar_missao(missao_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Encerrar uma missão (torná-la inativa)."""
-    if current_user.papel not in ['professor', 'gestor']:
-        raise HTTPException(status_code=403, detail="Apenas professores podem encerrar missões")
-        
-    missao = db.query(models.Missao).filter(models.Missao.id == missao_id).first()
-    if not missao:
-        raise HTTPException(status_code=404, detail="Missão não encontrada")
-        
-    if missao.criador_id != current_user.id and current_user.papel != 'gestor':
-        raise HTTPException(status_code=403, detail="Você só pode encerrar suas próprias missões")
-        
-    missao.ativa = False
-    db.commit()
-    
-    return {"message": "Missão encerrada com sucesso!"}
 
 @router.post("/{missao_id}/validar_presencial")
 def validar_missao_presencial(
