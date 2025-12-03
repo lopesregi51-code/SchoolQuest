@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle, XCircle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PendingMission {
@@ -7,6 +7,7 @@ interface PendingMission {
     missao_titulo: string;
     aluno_nome: string;
     aluno_id: number;
+    aluno_serie?: string;
     data_solicitacao: string;
 }
 
@@ -21,16 +22,42 @@ export const PendingMissionsList: React.FC<PendingMissionsListProps> = ({
     onApprove,
     onReject
 }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredMissions = missions.filter(mission =>
+        mission.missao_titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mission.aluno_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (mission.aluno_serie && mission.aluno_serie.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4">Missões Pendentes de Validação</h2>
+
+            {missions.length > 0 && (
+                <div className="mb-4 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por missão, aluno ou sala..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-primary text-white placeholder-gray-400"
+                    />
+                </div>
+            )}
+
             {missions.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">
                     Nenhuma missão pendente de validação.
                 </p>
+            ) : filteredMissions.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">
+                    Nenhuma missão encontrada com "{searchTerm}"
+                </p>
             ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-                    {missions.map((mission) => (
+                    {filteredMissions.map((mission) => (
                         <div
                             key={mission.id}
                             className="bg-gray-700/50 p-3 rounded-lg border border-gray-600 flex justify-between items-center gap-3"
