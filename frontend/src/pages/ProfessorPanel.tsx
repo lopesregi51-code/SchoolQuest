@@ -32,21 +32,12 @@ export const ProfessorPanel: React.FC = () => {
     });
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-    // Shop State
-    const [rewards, setRewards] = useState<any[]>([]);
-    const [newReward, setNewReward] = useState({ nome: '', descricao: '', custo: 0, estoque: 1, imagem_url: '' });
-    const [showShopManager, setShowShopManager] = useState(false);
-    const [pendingPurchases, setPendingPurchases] = useState<any[]>([]);
-    const [showApprovals, setShowApprovals] = useState(false);
-
     useEffect(() => {
         fetchMyMissions();
         fetchPendingMissions();
         fetchCompletedMissions();
         fetchClans();
         fetchTurmas();
-        fetchRewards();
-        fetchPendingPurchases();
 
         return () => {
             if (html5QrCodeRef.current?.isScanning) {
