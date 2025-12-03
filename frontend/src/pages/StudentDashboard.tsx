@@ -6,6 +6,8 @@ import { Ranking } from '../components/Ranking';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
+import { getLevelInfo } from '../utils/levelSystem';
+import { ExpandableText } from '../components/ExpandableText';
 
 interface Mission {
     id: number;
@@ -218,7 +220,14 @@ export const StudentDashboard: React.FC = () => {
                                     <div key={mission.id} className="bg-gray-700/50 p-4 rounded-xl border border-purple-500/30 flex justify-between items-center">
                                         <div>
                                             <h3 className="font-bold text-lg">{mission.missao?.titulo}</h3>
-                                            <p className="text-sm text-gray-300">Atribuída por Professor</p>
+                                            <p className="text-sm text-gray-300 mb-2">Atribuída por Professor</p>
+                                            {mission.missao?.descricao && (
+                                                <ExpandableText
+                                                    text={mission.missao.descricao}
+                                                    className="text-gray-400 text-xs"
+                                                    maxLength={60}
+                                                />
+                                            )}
                                         </div>
                                         <div className="flex gap-2">
                                             <button
@@ -324,7 +333,11 @@ export const StudentDashboard: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <p className="text-gray-300 text-xs mb-2 line-clamp-2">{mission.descricao}</p>
+                                        <ExpandableText
+                                            text={mission.descricao}
+                                            className="text-gray-300 text-xs mb-2"
+                                            maxLength={150}
+                                        />
 
                                         <div className="flex justify-end">
                                             {activeTab === 'disponivel' && (
@@ -378,23 +391,36 @@ export const StudentDashboard: React.FC = () => {
                             )}
                         </div>
                         <h2 className="text-xl font-bold mb-1">{user?.nome}</h2>
-                        <p className="text-purple-400 mb-1">Nível {user?.nivel} • Mago Iniciante</p>
-                        {user?.serie && (
-                            <p className="text-gray-400 text-sm mb-4">{user.serie}</p>
-                        )}
+                        {(() => {
+                            const levelInfo = getLevelInfo(user?.xp || 0);
+                            return (
+                                <>
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        <img src={levelInfo.rankIcon} alt={levelInfo.rankTitle} className="w-6 h-6" />
+                                        <p className="text-purple-400">Nível {levelInfo.level} • {levelInfo.rankTitle}</p>
+                                    </div>
+                                    {user?.serie && (
+                                        <p className="text-gray-400 text-sm mb-4">{user.serie}</p>
+                                    )}
 
-                        <div className="bg-gray-700/50 rounded-lg p-3 mb-2">
-                            <div className="flex justify-between text-sm mb-1">
-                                <span>XP Atual</span>
-                                <span className="font-bold text-yellow-400">{user?.xp} / {user?.nivel * 1000}</span>
-                            </div>
-                            <div className="w-full bg-gray-700 rounded-full h-2">
-                                <div
-                                    className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${(user?.xp || 0) % 1000 / 10}%` }}
-                                ></div>
-                            </div>
-                        </div>
+                                    <div className="bg-gray-700/50 rounded-lg p-3 mb-2">
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span>XP para Próximo Nível</span>
+                                            <span className="font-bold text-yellow-400">{levelInfo.xpCurrent} / 100</span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-2">
+                                            <div
+                                                className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
+                                                style={{ width: `${levelInfo.progressPercent}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-1 text-center">
+                                            Faltam {100 - levelInfo.xpCurrent} XP para o nível {levelInfo.level + 1}
+                                        </p>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* Ranking */}
