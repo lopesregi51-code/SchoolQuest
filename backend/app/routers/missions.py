@@ -209,6 +209,14 @@ def delete_missao(missao_id: int, db: Session = Depends(get_db), current_user: m
     if current_user.papel != 'admin' and current_user.papel != 'gestor' and missao.criador_id != current_user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para excluir esta missão")
     
+    # Delete all related records first to avoid foreign key constraint errors
+    # Delete all MissaoConcluida records
+    db.query(models.MissaoConcluida).filter(models.MissaoConcluida.missao_id == missao_id).delete()
+    
+    # Delete all MissaoAtribuida records
+    db.query(models.MissaoAtribuida).filter(models.MissaoAtribuida.missao_id == missao_id).delete()
+    
+    # Now delete the mission itself
     db.delete(missao)
     db.commit()
     logger.info(f"Mission deleted: {missao.titulo} by {current_user.nome}")
